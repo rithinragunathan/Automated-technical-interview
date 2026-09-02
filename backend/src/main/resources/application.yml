@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: mock-interview-backend
+  profiles:
+    active: ${SPRING_PROFILE:dev}
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mockinterview}
+    username: ${DB_USERNAME:mockuser}
+    password: ${DB_PASSWORD:mockpass}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  cache:
+    type: redis
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-this-secret-in-production-must-be-at-least-256-bits-long-for-hs256}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:5173}
+  sandbox:
+    docker-host: ${DOCKER_HOST:unix:///var/run/docker.sock}
+    java-image: ${SANDBOX_JAVA_IMAGE:openjdk:21-alpine}
+    timeout-seconds: ${SANDBOX_TIMEOUT_SECONDS:10}
+    memory-bytes: ${SANDBOX_MEMORY_BYTES:268435456}
+    cpu-period: 100000
+    cpu-quota: 50000
+    workspace-base: ${SANDBOX_WORKSPACE:/tmp/sandbox}
+  ai:
+    provider: ${AI_PROVIDER:mock}
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+      model: ${OPENAI_MODEL:gpt-4o-mini}
+  scoring:
+    weights:
+      coding: 0.40
+      knowledge: 0.20
+      communication: 0.20
+      behavior: 0.20
+    coding-weights:
+      correctness: 0.40
+      time-efficiency: 0.15
+      space-efficiency: 0.10
+      code-quality: 0.15
+      robustness: 0.10
+      readability: 0.10
+    thresholds:
+      beginner-max: 39
+      developing-max: 59
+      intermediate-max: 74
+      advanced-max: 89
+
+logging:
+  level:
+    com.mockinterview: DEBUG
+    org.springframework.security: INFO

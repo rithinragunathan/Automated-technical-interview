@@ -1,0 +1,11 @@
+server:
+  port: 8081
+app:
+  sandbox:
+    java-image: ${SANDBOX_JAVA_IMAGE:openjdk:21-alpine}
+    timeout-seconds: ${SANDBOX_TIMEOUT_SECONDS:10}
+    memory-bytes: ${SANDBOX_MEMORY_BYTES:268435456}
+    cpu-period: 100000
+    cpu-quota: 50000
+    workspace-base: ${SANDBOX_WORKSPACE:/tmp/sandbox}
+    pid-limit: 50
