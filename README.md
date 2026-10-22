@@ -1,6 +1,6 @@
 # Automated Technical Mock Interview Sandbox
 
-An automated system to evaluate candidate code submissions in a sandboxed environment, featuring AI-based mock interviews.
+An automated system to evaluate candidate code submissions in a sandboxed environment, featuring built-in mock interviews.
 
 ## Architecture
 
@@ -48,8 +48,8 @@ An automated system to evaluate candidate code submissions in a sandboxed enviro
 Access the application at http://localhost.
 
 ## Environment Setup Instructions
-- Copy `.env.example` to `.env` and configure your API keys (e.g., OpenAI API Key).
-- For local dev out of Docker, you can start Postgres and Redis using `docker-compose up postgres redis -d`.
+- Copy `.env.example` to `.env`, set `GEMINI_API_KEY`, and configure the local database and runtime settings.
+- For local dev out of Docker, you can start MySQL and Redis using `docker compose up mysql redis -d`.
 
 ## Module Descriptions
 - **frontend**: React SPA.
@@ -73,6 +73,8 @@ Frontend dev server runs on `localhost:5173`.
 ## Troubleshooting
 - **Docker permission denied**: Make sure the docker socket is mounted correctly and the sandbox-worker can access it.
 - **Code timeouts**: Adjust `SANDBOX_TIMEOUT_SECONDS` in `.env`.
+- **Gemini configuration**: Set `GEMINI_API_KEY` in `.env`. The key is read only from the environment and is never stored in source code.
+- **Database access denied during local backend startup**: `.env` is loaded by Docker Compose, but not by Spring Boot when started directly from an IDE or Maven. Set `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD` in the run configuration, or start the backend with `docker compose up --build`. If the MySQL volume was initialized with different credentials, update the variables to match that database or recreate the volume when its data can be discarded.
 
 ## License
 MIT
