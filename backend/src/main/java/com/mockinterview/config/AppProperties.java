@@ -49,6 +49,8 @@ public class AppProperties {
         private long cpuPeriod;
         private long cpuQuota;
         private String workspaceBase;
+        private String workspaceVolume;
+        private String workerUrl;
         // getters and setters omitted for brevity, add if needed by reflection
         public String getDockerHost() { return dockerHost; }
         public void setDockerHost(String dockerHost) { this.dockerHost = dockerHost; }
@@ -64,19 +66,23 @@ public class AppProperties {
         public void setCpuQuota(long cpuQuota) { this.cpuQuota = cpuQuota; }
         public String getWorkspaceBase() { return workspaceBase; }
         public void setWorkspaceBase(String workspaceBase) { this.workspaceBase = workspaceBase; }
+        public String getWorkspaceVolume() { return workspaceVolume; }
+        public void setWorkspaceVolume(String workspaceVolume) { this.workspaceVolume = workspaceVolume; }
+        public String getWorkerUrl() { return workerUrl; }
+        public void setWorkerUrl(String workerUrl) { this.workerUrl = workerUrl; }
     }
 
     public static class Ai {
-        private String provider;
-        private OpenAi openai = new OpenAi();
-        public String getProvider() { return provider; }
-        public void setProvider(String provider) { this.provider = provider; }
-        public OpenAi getOpenai() { return openai; }
-        public void setOpenai(OpenAi openai) { this.openai = openai; }
-        public static class OpenAi {
+        private Gemini gemini = new Gemini();
+
+        public Gemini getGemini() { return gemini; }
+        public void setGemini(Gemini gemini) { this.gemini = gemini; }
+
+        public static class Gemini {
             private String apiKey;
             private String baseUrl;
             private String model;
+
             public String getApiKey() { return apiKey; }
             public void setApiKey(String apiKey) { this.apiKey = apiKey; }
             public String getBaseUrl() { return baseUrl; }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Brain, User, Send, Loader2 } from 'lucide-react';
 
-const AIInterviewer = ({ currentQuestion, messages, onSendMessage, isProcessing }) => {
+const AIInterviewer = ({ currentQuestion, messages, onSendMessage, isProcessing, isComplete = false, inputEnabled = true }) => {
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
 
@@ -13,10 +13,10 @@ const AIInterviewer = ({ currentQuestion, messages, onSendMessage, isProcessing 
     scrollToBottom();
   }, [messages, isProcessing]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (inputText.trim() && !isProcessing) {
-      onSendMessage(inputText);
-      setInputText('');
+      const sent = await onSendMessage(inputText);
+      if (sent) setInputText('');
     }
   };
 
@@ -34,7 +34,7 @@ const AIInterviewer = ({ currentQuestion, messages, onSendMessage, isProcessing 
           <Brain className="w-6 h-6 text-brand-400" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-white">AI Interviewer</h2>
+          <h2 className="text-lg font-semibold text-white">Mock Interviewer</h2>
           <p className="text-xs text-brand-400">MockIQ Assistant</p>
         </div>
       </div>
@@ -71,7 +71,7 @@ const AIInterviewer = ({ currentQuestion, messages, onSendMessage, isProcessing 
               </div>
               <div className="px-4 py-3 rounded-lg bg-brand-900/20 border border-brand-500/20 text-gray-200 rounded-tl-none flex items-center">
                 <Loader2 className="w-4 h-4 animate-spin text-brand-400 mr-2" />
-                <span className="text-sm">AI is thinking...</span>
+                <span className="text-sm">Preparing feedback...</span>
               </div>
             </div>
           </div>
@@ -79,7 +79,8 @@ const AIInterviewer = ({ currentQuestion, messages, onSendMessage, isProcessing 
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4 border-t border-[#30363d] bg-[#0f1117]">
+      {inputEnabled ? (
+        <div className="p-4 border-t border-[#30363d] bg-[#0f1117]">
         <div className="relative">
           <textarea
             value={inputText}
@@ -88,17 +89,22 @@ const AIInterviewer = ({ currentQuestion, messages, onSendMessage, isProcessing 
             placeholder="Type your response... (Press Enter to send, Shift+Enter for new line)"
             className="w-full bg-[#161b22] border border-[#30363d] rounded-lg pl-4 pr-12 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 resize-none"
             rows={3}
-            disabled={isProcessing}
+            disabled={isProcessing || isComplete}
           />
           <button
             onClick={handleSend}
-            disabled={!inputText.trim() || isProcessing}
+            disabled={!inputText.trim() || isProcessing || isComplete}
             className="absolute right-2 bottom-2 p-2 rounded-md bg-brand-600 text-white disabled:opacity-50 hover:bg-brand-500 transition-colors"
           >
             <Send className="w-4 h-4" />
           </button>
         </div>
-      </div>
+        </div>
+      ) : (
+        <div className="border-t border-[#30363d] bg-[#0f1117] p-4 text-sm text-gray-400">
+          Answer the current question in the answer panel. You can type or use voice input.
+        </div>
+      )}
     </div>
   );
 };

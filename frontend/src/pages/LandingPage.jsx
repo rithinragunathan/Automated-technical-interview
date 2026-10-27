@@ -62,7 +62,7 @@ const LandingPage = () => {
           Master Your Next <br />Technical Interview
         </h1>
         <p className="text-lg md:text-xl text-gray-400 max-w-2xl mb-10 leading-relaxed">
-          Practice coding and system design with an adaptive AI interviewer. Get real-time feedback, detailed performance analytics, and tailored recommendations to land your dream job.
+          Practice coding and system design with a built-in mock interviewer. Get real-time feedback, detailed performance analytics, and tailored recommendations to land your dream job.
         </p>
         <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
           <Link to="/register" className="px-8 py-4 text-base font-semibold bg-brand-600 hover:bg-brand-500 text-white rounded-lg transition-all hover:shadow-lg hover:shadow-brand-500/20 flex items-center justify-center">

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, Clock, Server } from 'lucide-react';
 
-const TestCasePanel = ({ results, status, metrics }) => {
+const TestCasePanel = ({ results, status, metrics, testCases = [] }) => {
   const [activeTab, setActiveTab] = useState('testcases');
 
   const tabs = [
@@ -45,9 +45,21 @@ const TestCasePanel = ({ results, status, metrics }) => {
 
       <div className="flex-grow overflow-y-auto p-4 font-mono">
         {status === 'IDLE' && !results && (
-          <div className="text-gray-500 flex items-center justify-center h-full">
-            Run your code to see results here.
-          </div>
+          testCases.length > 0 ? (
+            <div className="space-y-3">
+              {testCases.map((testCase, index) => (
+                <div key={testCase.id || index} className="border border-[#30363d] rounded-md p-3">
+                  <div className="font-semibold text-gray-200 mb-2">Test Case {index + 1}</div>
+                  <div className="text-xs text-gray-500 mb-1">Input</div>
+                  <pre className="bg-[#0f1117] p-2 rounded text-gray-300 whitespace-pre-wrap">{testCase.input}</pre>
+                  <div className="text-xs text-gray-500 mt-2 mb-1">Expected Output</div>
+                  <pre className="bg-[#0f1117] p-2 rounded text-green-400 whitespace-pre-wrap">{testCase.expectedOutput}</pre>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-gray-500 flex items-center justify-center h-full">Run your code to see results here.</div>
+          )
         )}
 
         {status !== 'IDLE' && status !== 'DONE' && status !== 'ERROR' && (
@@ -69,28 +81,32 @@ const TestCasePanel = ({ results, status, metrics }) => {
                   {renderStatusIcon(result.status)}
                 </div>
                 
-                {result.status !== 'PASSED' && (
-                  <div className="space-y-2 mt-3 text-xs">
+                <div className="space-y-2 mt-3 text-xs">
+                  {result.input && (
                     <div>
                       <div className="text-gray-500 mb-1">Input:</div>
                       <div className="bg-[#0f1117] p-2 rounded text-gray-300 overflow-x-auto">{result.input}</div>
                     </div>
+                  )}
+                  {result.expectedOutput && (
                     <div>
                       <div className="text-gray-500 mb-1">Expected Output:</div>
                       <div className="bg-[#0f1117] p-2 rounded text-green-400 overflow-x-auto">{result.expectedOutput}</div>
                     </div>
-                    <div>
-                      <div className="text-gray-500 mb-1">Actual Output:</div>
-                      <div className="bg-[#0f1117] p-2 rounded text-red-400 overflow-x-auto">{result.actualOutput}</div>
+                  )}
+                  <div>
+                    <div className="text-gray-500 mb-1">Actual Output:</div>
+                    <div className={`bg-[#0f1117] p-2 rounded overflow-x-auto whitespace-pre-wrap ${result.status === 'PASSED' ? 'text-green-400' : 'text-red-400'}`}>
+                      {result.actualOutput || '(no output)'}
                     </div>
-                    {result.errorMessage && (
-                      <div>
-                        <div className="text-gray-500 mb-1">Error:</div>
-                        <div className="bg-red-900/20 text-red-400 p-2 rounded whitespace-pre-wrap">{result.errorMessage}</div>
-                      </div>
-                    )}
                   </div>
-                )}
+                  {result.status !== 'PASSED' && result.errorMessage && (
+                    <div>
+                      <div className="text-gray-500 mb-1">Error:</div>
+                      <div className="bg-red-900/20 text-red-400 p-2 rounded whitespace-pre-wrap">{result.errorMessage}</div>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>

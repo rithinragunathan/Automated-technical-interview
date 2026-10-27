@@ -13,6 +13,16 @@ const ReportPage = () => {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const overallScore = report?.score?.overallScore ?? report?.overallScore ?? 0;
+  const scoreBreakdown = report?.codingBreakdown ? {
+    correctness: report.codingBreakdown.correctnessScore,
+    timeEfficiency: report.codingBreakdown.timeEfficiencyScore,
+    spaceEfficiency: report.codingBreakdown.spaceEfficiencyScore,
+    codeQuality: report.codingBreakdown.codeQualityScore,
+    robustness: report.codingBreakdown.robustnessScore,
+    readability: report.codingBreakdown.readabilityScore
+  } : (report?.scoreBreakdown || {});
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -20,42 +30,21 @@ const ReportPage = () => {
         const data = await getReport(id);
         setReport(data);
       } catch (err) {
-        // Mock data
-        setReport({
-          id,
-          interviewType: 'MIXED',
-          topic: 'SYSTEM_DESIGN',
-          date: new Date().toISOString(),
-          overallScore: 82,
-          scoreBreakdown: {
-            coding: 85,
-            knowledge: 75,
-            communication: 90,
-            problemSolving: 80
-          },
-          strengths: [
-            "Clear understanding of thread lifecycle and states.",
-            "Wrote clean, modular code with appropriate helper functions.",
-            "Good communication while explaining thought process."
-          ],
-          weaknesses: [
-            "Missed handling a critical edge case with null inputs.",
-            "Initial approach to concurrency problem was non-optimal."
-          ],
-          recommendations: [
-            "Review concurrent collections in Java (ConcurrentHashMap, CopyOnWriteArrayList).",
-            "Practice writing unit tests for edge cases before implementing the main logic."
-          ]
-        });
+        console.error('Failed to load report:', err);
+        setError(err.response?.data?.message || 'Failed to load report.');
       } finally {
         setLoading(false);
       }
     };
+    setLoading(true);
+    setError(null);
     fetchReport();
-  }, [id]);
+  }, [id, retryCount]);
 
   if (loading) return <LoadingSpinner message="Generating report..." />;
-  if (error && !report) return <ErrorMessage message="Failed to load report." />;
+  if (error && !report) {
+    return <ErrorMessage message={error} onRetry={() => setRetryCount(count => count + 1)} />;
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-12">
@@ -83,11 +72,11 @@ const ReportPage = () => {
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 flex flex-col items-center justify-center">
             <h2 className="text-lg font-semibold text-white mb-6 w-full text-center">Overall Score</h2>
-            <ScoreGauge score={report.overallScore} size={160} strokeWidth={12} label="out of 100" />
+            <ScoreGauge score={overallScore} size={160} strokeWidth={12} label="out of 100" />
             <div className="mt-6 text-center">
               <Badge 
-                variant={report.overallScore >= 80 ? 'success' : report.overallScore >= 60 ? 'warning' : 'error'} 
-                text={report.overallScore >= 80 ? 'Strong Hire' : report.overallScore >= 60 ? 'Leaning Hire' : 'No Hire'} 
+                variant={overallScore >= 80 ? 'success' : overallScore >= 60 ? 'warning' : 'error'}
+                text={overallScore >= 80 ? 'Strong Hire' : overallScore >= 60 ? 'Leaning Hire' : 'No Hire'}
                 className="text-sm px-3 py-1"
               />
             </div>
@@ -96,7 +85,7 @@ const ReportPage = () => {
           <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
             <h2 className="text-lg font-semibold text-white mb-6">Score Breakdown</h2>
             <div className="space-y-5">
-              {Object.entries(report.scoreBreakdown).map(([category, score]) => (
+              {Object.entries(scoreBreakdown).map(([category, score]) => (
                 <div key={category}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-gray-300 capitalize">{category.replace(/([A-Z])/g, ' $1').trim()}</span>
@@ -154,10 +143,10 @@ const ReportPage = () => {
               Recommended Actions
             </h2>
             <ul className="space-y-3">
-              {report.recommendations.map((item, idx) => (
+              {(report.recommendations || []).map((item, idx) => (
                 <li key={idx} className="flex items-start bg-brand-900/10 border border-brand-900/20 p-3 rounded-md">
                   <span className="h-1.5 w-1.5 rounded-full bg-brand-500 mt-2 mr-3 flex-shrink-0"></span>
-                  <span className="text-gray-300 text-sm leading-relaxed">{item}</span>
+                  <span className="text-gray-300 text-sm leading-relaxed">{typeof item === 'string' ? item : item.title || item.description}</span>
                 </li>
               ))}
             </ul>

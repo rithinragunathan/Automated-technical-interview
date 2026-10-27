@@ -1,15 +1,11 @@
-CREATE TYPE question_type AS ENUM ('TECHNICAL', 'BEHAVIORAL', 'CODING', 'FOLLOW_UP');
-CREATE TYPE difficulty_level AS ENUM ('EASY', 'MEDIUM', 'HARD');
-CREATE TYPE interview_type AS ENUM ('CODING', 'TECHNICAL_QA', 'MIXED');
-
 CREATE TABLE questions (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(500) NOT NULL,
     content TEXT NOT NULL,
-    question_type question_type NOT NULL,
-    difficulty difficulty_level NOT NULL DEFAULT 'MEDIUM',
+    question_type VARCHAR(30) NOT NULL,
+    difficulty VARCHAR(20) NOT NULL DEFAULT 'MEDIUM',
     topic VARCHAR(100),
-    tags TEXT[],
+    tags TEXT,
     expected_answer TEXT,
     evaluation_rubric TEXT,
     active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -18,17 +14,17 @@ CREATE TABLE questions (
 );
 
 CREATE TABLE coding_problems (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) NOT NULL UNIQUE,
     description TEXT NOT NULL,
-    difficulty difficulty_level NOT NULL DEFAULT 'MEDIUM',
+    difficulty VARCHAR(20) NOT NULL DEFAULT 'MEDIUM',
     topic VARCHAR(100),
-    tags TEXT[],
+    tags TEXT,
     constraints TEXT,
     input_format TEXT,
     output_format TEXT,
-    examples JSONB,
+    examples JSON,
     time_complexity_hint VARCHAR(100),
     space_complexity_hint VARCHAR(100),
     starter_code_java TEXT,
@@ -40,7 +36,7 @@ CREATE TABLE coding_problems (
 );
 
 CREATE TABLE test_cases (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     problem_id BIGINT NOT NULL REFERENCES coding_problems(id) ON DELETE CASCADE,
     input TEXT NOT NULL,
     expected_output TEXT NOT NULL,

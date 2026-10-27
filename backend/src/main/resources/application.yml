@@ -4,21 +4,22 @@ spring:
   profiles:
     active: ${SPRING_PROFILE:dev}
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/mockinterview}
+    url: ${DB_URL:jdbc:mysql://localhost:3307/mockinterview?createDatabaseIfNotExist=true&serverTimezone=UTC}
     username: ${DB_USERNAME:mockuser}
     password: ${DB_PASSWORD:mockpass}
-    driver-class-name: org.postgresql.Driver
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
   flyway:
     enabled: true
     locations: classpath:db/migration
+    ignore-migration-patterns: "*:missing"
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -37,21 +38,22 @@ app:
     secret: ${JWT_SECRET:change-this-secret-in-production-must-be-at-least-256-bits-long-for-hs256}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   cors:
-    allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:5173}
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:5174}
   sandbox:
-    docker-host: ${DOCKER_HOST:unix:///var/run/docker.sock}
-    java-image: ${SANDBOX_JAVA_IMAGE:openjdk:21-alpine}
+    docker-host: ${DOCKER_HOST:npipe:////./pipe/docker_engine}
+    java-image: ${SANDBOX_JAVA_IMAGE:eclipse-temurin:21-jdk-alpine}
     timeout-seconds: ${SANDBOX_TIMEOUT_SECONDS:10}
     memory-bytes: ${SANDBOX_MEMORY_BYTES:268435456}
     cpu-period: 100000
     cpu-quota: 50000
-    workspace-base: ${SANDBOX_WORKSPACE:/tmp/sandbox}
+    workspace-base: ${SANDBOX_WORKSPACE:C:/tmp/sandbox}
+    workspace-volume: ${SANDBOX_WORKSPACE_VOLUME:mockinterview-sandbox-workspace}
+    worker-url: ${SANDBOX_WORKER_URL:http://localhost:8081}
   ai:
-    provider: ${AI_PROVIDER:mock}
-    openai:
-      api-key: ${OPENAI_API_KEY:}
-      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
-      model: ${OPENAI_MODEL:gpt-4o-mini}
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/models/}
+      model: ${GEMINI_MODEL:gemini-2.5-flash}
   scoring:
     weights:
       coding: 0.40

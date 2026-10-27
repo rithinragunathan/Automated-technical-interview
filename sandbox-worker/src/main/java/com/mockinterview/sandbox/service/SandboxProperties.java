@@ -8,11 +8,12 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ConfigurationProperties(prefix = "app.sandbox")
 public class SandboxProperties {
-    private String javaImage = "openjdk:21-alpine";
+    private String javaImage = "eclipse-temurin:21-jdk-alpine";
     private int timeoutSeconds = 10;
     private long memoryBytes = 268435456;
     private long cpuPeriod = 100000;
     private long cpuQuota = 50000;
     private String workspaceBase = "/tmp/sandbox";
+    private String workspaceVolume = "mockinterview-sandbox-workspace";
     private long pidLimit = 50;
 }

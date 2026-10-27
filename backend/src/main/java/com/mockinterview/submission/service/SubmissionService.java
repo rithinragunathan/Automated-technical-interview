@@ -9,7 +9,13 @@ import com.mockinterview.coding.entity.TestCase;
 import com.mockinterview.coding.repository.CodingProblemRepository;
 import com.mockinterview.coding.repository.TestCaseRepository;
 import com.mockinterview.common.exception.ResourceNotFoundException;
+import com.mockinterview.interview.entity.Interview;
+import com.mockinterview.interview.entity.InterviewQuestion;
+import com.mockinterview.interview.repository.InterviewQuestionRepository;
 import com.mockinterview.interview.repository.InterviewRepository;
+import com.mockinterview.recommendation.service.RecommendationEngine;
+import com.mockinterview.scoring.dto.ScoreBreakdown;
+import com.mockinterview.scoring.service.ScoringEngine;
 import com.mockinterview.sandbox.dto.ExecutionRequest;
 import com.mockinterview.sandbox.dto.ExecutionResult;
 import com.mockinterview.sandbox.service.SandboxOrchestrator;
@@ -43,6 +49,9 @@ public class SubmissionService {
     private final CodingProblemRepository problemRepository;
     private final UserRepository userRepository;
     private final InterviewRepository interviewRepository;
+    private final InterviewQuestionRepository interviewQuestionRepository;
+    private final ScoringEngine scoringEngine;
+    private final RecommendationEngine recommendationEngine;
 
     public SubmissionService(SubmissionRepository submissionRepository,
                              TestResultRepository testResultRepository,
@@ -52,7 +61,10 @@ public class SubmissionService {
                              ExecutionStatusBroadcaster broadcaster,
                              CodingProblemRepository problemRepository,
                              UserRepository userRepository,
-                             InterviewRepository interviewRepository) {
+                             InterviewRepository interviewRepository,
+                             InterviewQuestionRepository interviewQuestionRepository,
+                             @Lazy ScoringEngine scoringEngine,
+                             RecommendationEngine recommendationEngine) {
         this.submissionRepository = submissionRepository;
         this.testResultRepository = testResultRepository;
         this.executionResultRepository = executionResultRepository;
@@ -62,6 +74,9 @@ public class SubmissionService {
         this.problemRepository = problemRepository;
         this.userRepository = userRepository;
         this.interviewRepository = interviewRepository;
+        this.interviewQuestionRepository = interviewQuestionRepository;
+        this.scoringEngine = scoringEngine;
+        this.recommendationEngine = recommendationEngine;
     }
 
     public SubmissionResultDto runCode(Long userId, SubmissionRequest request) {
@@ -76,11 +91,24 @@ public class SubmissionService {
         CodingProblem problem = problemRepository.findById(request.getProblemId())
                 .orElseThrow(() -> new ResourceNotFoundException("Problem not found"));
 
+        Interview interview = null;
+        InterviewQuestion interviewQuestion = null;
+        if (request.getInterviewId() != null) {
+            interview = interviewRepository.findById(request.getInterviewId())
+                    .filter(candidate -> candidate.getUser().getId().equals(userId)
+                            && candidate.getStatus() == Interview.InterviewStatus.ACTIVE)
+                    .orElseThrow(() -> new ResourceNotFoundException("Active interview not found"));
+            Interview linkedInterview = interview;
+            interviewQuestion = interviewQuestionRepository
+                    .findByInterview_IdAndCodingProblem_Id(linkedInterview.getId(), problem.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Problem is not assigned to this interview"));
+        }
+
         Submission submission = new Submission();
         submission.setUser(userRepository.getReferenceById(userId));
         submission.setProblem(problem);
         if (request.getInterviewId() != null) {
-            submission.setInterview(interviewRepository.getReferenceById(request.getInterviewId()));
+            submission.setInterview(interview);
         }
         submission.setLanguage(request.getLanguage());
         submission.setSourceCode(request.getSourceCode());
@@ -103,6 +131,9 @@ public class SubmissionService {
         ExecutionResult lastResult = null;
         
         boolean compilationError = false;
+        boolean systemError = false;
+        boolean runtimeError = false;
+        boolean timedOut = false;
 
         for (int i = 0; i < testCases.size(); i++) {
             TestCase tc = testCases.get(i);
@@ -110,6 +141,7 @@ public class SubmissionService {
             ExecutionRequest execReq = new ExecutionRequest();
             execReq.setLanguage(request.getLanguage());
             execReq.setSourceCode(request.getSourceCode());
+            execReq.setRunnerCode(runnerCodeFor(problem.getSlug()));
             execReq.setStdin(tc.getInput());
             execReq.setTimeoutSeconds(10);
             execReq.setMemoryBytes(256 * 1024 * 1024L);
@@ -117,17 +149,39 @@ public class SubmissionService {
             ExecutionResult result = sandboxOrchestrator.executeCode(execReq);
             lastResult = result;
 
+            if (result.getSystemError() != null && !result.getSystemError().isBlank()) {
+                systemError = true;
+                TestResult tr = new TestResult();
+                tr.setSubmission(savedSubmission);
+                tr.setTestCase(tc);
+                tr.setPassed(false);
+                tr.setActualOutput("");
+                tr.setErrorMessage(result.getSystemError());
+                tr.setExecutionTimeMs(result.getExecutionTimeMs());
+                testResultRepository.save(tr);
+                testResultDtos.add(new TestResultDto(
+                        tc.getId(), false, "", result.getExecutionTimeMs(), result.getSystemError(), i + 1
+                ));
+                break;
+            }
+
             if (result.getCompilationError() != null && !result.getCompilationError().isEmpty()) {
                 compilationError = true;
                 break;
             }
+            if (result.getExitCode() != null && result.getExitCode() != 0 && !result.isTimedOut()) {
+                runtimeError = true;
+            }
+            timedOut |= result.isTimedOut();
 
             TestResult tr = new TestResult();
             tr.setSubmission(savedSubmission);
             tr.setTestCase(tc);
             
             String actual = result.getStdout() != null ? result.getStdout().trim() : "";
-            boolean isPassed = actual.equals(tc.getExpectedOutput().trim()) && result.getExitCode() != null && result.getExitCode() == 0;
+            String expected = tc.getExpectedOutput() != null ? tc.getExpectedOutput().trim() : "";
+            boolean isPassed = normalizedOutput(actual).equals(normalizedOutput(expected))
+                    && result.getExitCode() != null && result.getExitCode() == 0;
             
             tr.setPassed(isPassed);
             tr.setActualOutput(actual);
@@ -144,6 +198,9 @@ public class SubmissionService {
             testResultDtos.add(new TestResultDto(
                     tc.getId(), isPassed, actual, result.getExecutionTimeMs(), result.getStderr(), i + 1
             ));
+            if (timedOut) {
+                break;
+            }
         }
 
         broadcaster.broadcast(subIdStr, new ExecutionStatusMessage(subIdStr, "EVALUATING", "Evaluating results", 80));
@@ -163,10 +220,14 @@ public class SubmissionService {
         exeRes.setMemoryUsedKb(maxMemory);
         executionResultRepository.save(exeRes);
 
-        if (compilationError) {
+        if (systemError) {
+            savedSubmission.setStatus(Submission.SubmissionStatus.SYSTEM_ERROR);
+        } else if (compilationError) {
             savedSubmission.setStatus(Submission.SubmissionStatus.COMPILATION_ERROR);
-        } else if (lastResult != null && lastResult.isTimedOut()) {
+        } else if (timedOut) {
             savedSubmission.setStatus(Submission.SubmissionStatus.TIME_LIMIT_EXCEEDED);
+        } else if (runtimeError) {
+            savedSubmission.setStatus(Submission.SubmissionStatus.RUNTIME_ERROR);
         } else if (passed == testCases.size() && testCases.size() > 0) {
             savedSubmission.setStatus(Submission.SubmissionStatus.ACCEPTED);
         } else {
@@ -180,10 +241,37 @@ public class SubmissionService {
         
         submissionRepository.save(savedSubmission);
 
+        if (isSubmit && savedSubmission.getStatus() == Submission.SubmissionStatus.ACCEPTED
+                && interviewQuestion != null && interviewQuestion.getCompletedAt() == null) {
+            interviewQuestion.setCompletedAt(java.time.LocalDateTime.now());
+            interviewQuestionRepository.save(interviewQuestion);
+            interview.setQuestionsCompleted(interview.getQuestionsCompleted() + 1);
+            interviewRepository.save(interview);
+        }
+
         broadcaster.broadcast(subIdStr, new ExecutionStatusMessage(subIdStr, "COMPLETED", "Execution completed", 100));
 
-        // Note: Missing ScoringEngine injection here as requested to avoid circular deps temporarily, 
-        // will add logic in ScoringEngine when implemented
+        if (isSubmit && savedSubmission.getStatus() != Submission.SubmissionStatus.SYSTEM_ERROR) {
+            String difficulty = problem.getDifficulty().name();
+            List<TestResult> savedTestResults = testResultRepository.findBySubmissionId(savedSubmission.getId());
+            ScoreBreakdown sb = scoringEngine.scoreSubmission(savedSubmission, savedTestResults, exeRes, difficulty);
+
+            if (savedSubmission.getInterview() != null) {
+                recommendationEngine.generateRecommendations(
+                        savedSubmission.getUser().getId(),
+                        savedSubmission.getInterview().getId(),
+                        sb,
+                        50.0
+                );
+            } else {
+                recommendationEngine.generateRecommendations(
+                        savedSubmission.getUser().getId(),
+                        null,
+                        sb,
+                        50.0
+                );
+            }
+        }
 
         return new SubmissionResultDto(
                 savedSubmission.getId(),
@@ -199,12 +287,52 @@ public class SubmissionService {
                 savedSubmission.getCreatedAt()
         );
     }
+
+    private String normalizedOutput(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\r\n", "\n").replace("\r", "\n")
+                .trim()
+                .replaceAll("\\s+", " ");
+    }
+
+    private String runnerCodeFor(String slug) {
+        if ("two-sum".equals(slug)) {
+            return "class Main {\n"
+                    + "    public static void main(String[] args) throws Exception {\n"
+                    + "        String input = new String(System.in.readAllBytes()).trim();\n"
+                    + "        int arrayStart = input.indexOf('[');\n"
+                    + "        int arrayEnd = input.indexOf(']', arrayStart);\n"
+                    + "        if (arrayStart < 0 || arrayEnd < 0) throw new IllegalArgumentException(\"Expected an array in bracket notation.\");\n"
+                    + "        String arrayLine = input.substring(arrayStart + 1, arrayEnd).trim();\n"
+                    + "        String targetText = input.substring(arrayEnd + 1).trim();\n"
+                    + "        if (targetText.isEmpty()) throw new IllegalArgumentException(\"Expected a target after the array.\");\n"
+                    + "        int target = Integer.parseInt(targetText.split(\"\\\\s+\")[0]);\n"
+                    + "        int[] nums = java.util.Arrays.stream(arrayLine.split(\",\"))\n"
+                    + "                .mapToInt(value -> Integer.parseInt(value.trim())).toArray();\n"
+                    + "        int[] result = new Solution().twoSum(nums, target);\n"
+                    + "        System.out.println(\"[\" + result[0] + \",\" + result[1] + \"]\");\n"
+                    + "    }\n"
+                    + "}";
+        }
+        if ("reverse-linked-list".equals(slug)) {
+            return "class Main {\n"
+                    + "    public static void main(String[] args) throws Exception {\n"
+                    + "        String input = new java.io.BufferedReader(new java.io.InputStreamReader(System.in)).readLine().trim();\n"
+                    + "        System.out.println(new Solution().reverseList(input));\n"
+                    + "    }\n"
+                    + "}";
+        }
+        return "";
+    }
     
     public SubmissionResultDto getSubmission(Long id, Long userId) {
         Submission submission = submissionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Submission not found"));
-        
-        // For simplicity omitted security check if userId matches
+        if (!submission.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Submission not found");
+        }
         
         List<TestResultDto> testResultDtos = testResultRepository.findBySubmissionId(submission.getId())
                 .stream().map(tr -> new TestResultDto(

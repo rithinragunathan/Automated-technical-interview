@@ -42,6 +42,6 @@ public class CandidateProfile extends Auditable {
     @Column(nullable = false)
     private int problemsSolved = 0;
     
-    @Column(nullable = false, precision = 5, scale = 2)
+    @Column(nullable = false)
     private double averageScore = 0.0;
 }

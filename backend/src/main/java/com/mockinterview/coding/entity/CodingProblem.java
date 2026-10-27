@@ -44,7 +44,7 @@ public class CodingProblem extends Auditable {
     @Column(columnDefinition = "TEXT")
     private String outputFormat;
 
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "json")
     private String examples;
 
     @Column(length = 100)

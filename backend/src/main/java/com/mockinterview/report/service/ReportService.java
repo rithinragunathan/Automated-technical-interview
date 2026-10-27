@@ -2,11 +2,16 @@ package com.mockinterview.report.service;
 
 import com.mockinterview.evaluation.dto.InterviewFeedback;
 import com.mockinterview.evaluation.dto.InterviewSummaryForAI;
+import com.mockinterview.evaluation.entity.TechnicalAnswer;
 import com.mockinterview.evaluation.provider.LLMProvider;
+import com.mockinterview.evaluation.repository.TechnicalAnswerRepository;
+import com.mockinterview.common.exception.ResourceNotFoundException;
+import com.mockinterview.common.exception.ApiException;
 import com.mockinterview.interview.entity.Interview;
 import com.mockinterview.interview.repository.InterviewRepository;
 import com.mockinterview.recommendation.dto.RecommendationDto;
 import com.mockinterview.recommendation.entity.Recommendation;
+import com.mockinterview.recommendation.repository.RecommendationRepository;
 import com.mockinterview.recommendation.service.RecommendationEngine;
 import com.mockinterview.report.dto.InterviewReportDto;
 import com.mockinterview.report.entity.FeedbackReport;
@@ -28,6 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.OptionalDouble;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -43,8 +50,10 @@ public class ReportService {
     private final OverallScoreCalculator overallScoreCalculator;
     private final LLMProvider llmProvider;
     private final RecommendationEngine recommendationEngine;
+    private final RecommendationRepository recommendationRepository;
     private final TestResultRepository testResultRepository;
     private final ExecutionResultRepository executionResultRepository;
+    private final TechnicalAnswerRepository technicalAnswerRepository;
 
     public ReportService(InterviewRepository interviewRepository,
                          SubmissionRepository submissionRepository,
@@ -54,8 +63,10 @@ public class ReportService {
                          OverallScoreCalculator overallScoreCalculator,
                          LLMProvider llmProvider,
                          RecommendationEngine recommendationEngine,
+                         RecommendationRepository recommendationRepository,
                          TestResultRepository testResultRepository,
-                         ExecutionResultRepository executionResultRepository) {
+                         ExecutionResultRepository executionResultRepository,
+                         TechnicalAnswerRepository technicalAnswerRepository) {
         this.interviewRepository = interviewRepository;
         this.submissionRepository = submissionRepository;
         this.feedbackReportRepository = feedbackReportRepository;
@@ -64,13 +75,16 @@ public class ReportService {
         this.overallScoreCalculator = overallScoreCalculator;
         this.llmProvider = llmProvider;
         this.recommendationEngine = recommendationEngine;
+        this.recommendationRepository = recommendationRepository;
         this.testResultRepository = testResultRepository;
         this.executionResultRepository = executionResultRepository;
+        this.technicalAnswerRepository = technicalAnswerRepository;
     }
 
-    public InterviewReportDto generateReport(Long interviewId) {
+    public InterviewReportDto generateReport(Long interviewId, Long userId) {
         Interview interview = interviewRepository.findById(interviewId)
-                .orElseThrow(() -> new RuntimeException("Interview not found"));
+                .filter(candidate -> candidate.getUser().getId().equals(userId))
+                .orElseThrow(() -> new ResourceNotFoundException("Interview not found"));
 
         List<Submission> submissions = submissionRepository.findByInterviewId(interviewId);
         
@@ -89,43 +103,82 @@ public class ReportService {
             totalTests += sub.getTotalTests();
         }
         
-        double avgCodingScore = submissions.isEmpty() ? 0 : totalCodingScore / submissions.size();
+        Double avgCodingScore = submissions.isEmpty() ? null : totalCodingScore / submissions.size();
         
-        // Assume knowledgeScore for now (no technical answers fetched yet)
-        double avgKnowledgeScore = 50.0;
-        
-        OverallScore overall = overallScoreCalculator.calculate(avgCodingScore, avgKnowledgeScore, null, null);
-        
-        Score score = new Score();
-        score.setInterview(interview);
-        score.setOverallScore(overall.overallScore());
-        score.setCodingScore(overall.codingScore());
-        score.setKnowledgeScore(overall.knowledgeScore());
-        score.setProficiencyLevel(overall.proficiencyLevel());
-        scoreRepository.save(score);
+        List<TechnicalAnswer> answers = technicalAnswerRepository.findByInterviewId(interviewId);
+        OptionalDouble knowledgeAverage = answers.stream()
+                .map(TechnicalAnswer::getOverallScore)
+                .filter(Objects::nonNull)
+                .mapToDouble(Double::doubleValue)
+                .average();
+        Double avgKnowledgeScore = knowledgeAverage.isPresent() ? knowledgeAverage.getAsDouble() : null;
 
-        InterviewFeedback feedback = llmProvider.generateInterviewFeedback(new InterviewSummaryForAI(
-                interview.getInterviewType().name(),
-                interview.getDifficulty().name(),
-                interview.getTopic(),
+        Score score = scoreRepository.findByInterviewId(interviewId).orElseGet(Score::new);
+        score.setInterview(interview);
+        score.setCodingScore(avgCodingScore != null ? avgCodingScore : 0);
+        score.setKnowledgeScore(avgKnowledgeScore != null ? avgKnowledgeScore : 0);
+        OverallScore overall = overallScoreCalculator.calculate(
                 avgCodingScore,
                 avgKnowledgeScore,
-                new ArrayList<>(),
-                new ArrayList<>()
-        ));
+                score.getCommunicationScore(),
+                score.getBehaviorScore());
+        score.setOverallScore(overall.overallScore());
+        score.setProficiencyLevel(overall.proficiencyLevel());
+        score.setCalculatedAt(java.time.LocalDateTime.now());
+        score = scoreRepository.save(score);
 
-        FeedbackReport report = new FeedbackReport();
-        report.setInterview(interview);
-        report.setUser(interview.getUser());
-        report.setOverallSummary(feedback.narrative());
-        report.setStrengthsList(feedback.strengths());
-        report.setWeaknessesList(feedback.weaknesses());
-        report.setAiNarrative(feedback.narrative());
-        feedbackReportRepository.save(report);
+        FeedbackReport report = feedbackReportRepository.findByInterviewId(interviewId).orElse(null);
+        InterviewFeedback feedback;
+        if (report == null) {
+            try {
+                feedback = llmProvider.generateInterviewFeedback(new InterviewSummaryForAI(
+                        interview.getInterviewType().name(),
+                        interview.getDifficulty().name(),
+                        interview.getTopic(),
+                        score.getCodingScore(),
+                        score.getKnowledgeScore(),
+                        answers.stream()
+                                .map(answer -> answer.getInterviewQuestion().getQuestion() != null
+                                        ? answer.getInterviewQuestion().getQuestion().getTopic()
+                                        : interview.getTopic())
+                                .filter(topic -> topic != null && !topic.isBlank())
+                                .distinct()
+                                .toList(),
+                        answers.stream()
+                                .map(this::formatAnswerForFeedback)
+                                .toList()
+                ));
+            } catch (IllegalStateException ex) {
+                log.warn("Gemini could not generate feedback for interview {}", interviewId, ex);
+                throw new ApiException("Gemini is temporarily unable to generate report feedback. Please try again shortly.", 503);
+            }
+
+            report = new FeedbackReport();
+            report.setInterview(interview);
+            report.setUser(interview.getUser());
+            report.setOverallSummary(feedback.narrative());
+            report.setStrengthsList(feedback.strengths());
+            report.setWeaknessesList(feedback.weaknesses());
+            report.setAiNarrative(feedback.narrative());
+            report = feedbackReportRepository.save(report);
+        } else {
+            feedback = new InterviewFeedback(
+                    report.getAiNarrative(),
+                    report.getStrengthsList(),
+                    report.getWeaknessesList());
+        }
 
         List<RecommendationDto> recDtos = new ArrayList<>();
-        if (lastBreakdown != null) {
-            List<Recommendation> recs = recommendationEngine.generateRecommendations(interview.getUser().getId(), interviewId, lastBreakdown, avgKnowledgeScore);
+        List<Recommendation> recommendations = recommendationRepository.findByInterviewId(interviewId);
+        if (recommendations.isEmpty() && lastBreakdown != null) {
+            recommendations = recommendationEngine.generateRecommendations(
+                    interview.getUser().getId(),
+                    interviewId,
+                    lastBreakdown,
+                    avgKnowledgeScore != null ? avgKnowledgeScore : 0);
+        }
+        if (!recommendations.isEmpty()) {
+            List<Recommendation> recs = recommendations;
             recDtos = recs.stream().map(r -> new RecommendationDto(
                     r.getId(), r.getCategory(), r.getTitle(), r.getDescription(), r.getPriority(), r.getResourceLinksList(), r.isCompleted()
             )).collect(Collectors.toList());
@@ -150,5 +203,17 @@ public class ReportService {
                 totalPassed,
                 totalTests
         );
+    }
+
+    private String formatAnswerForFeedback(TechnicalAnswer answer) {
+        String question = answer.getInterviewQuestion().isAiGenerated()
+                ? answer.getInterviewQuestion().getAiQuestionText()
+                : answer.getInterviewQuestion().getQuestion() != null
+                        ? answer.getInterviewQuestion().getQuestion().getContent()
+                        : answer.getInterviewQuestion().getCodingProblem() != null
+                                ? answer.getInterviewQuestion().getCodingProblem().getTitle()
+                                : "Interview question";
+        return "Question: %s | Candidate answer: %s | Evaluation score: %.1f"
+                .formatted(question, answer.getAnswerText(), answer.getOverallScore() != null ? answer.getOverallScore() : 0.0);
     }
 }

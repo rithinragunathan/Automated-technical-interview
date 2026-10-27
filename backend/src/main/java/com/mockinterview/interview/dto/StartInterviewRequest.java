@@ -12,4 +12,6 @@ public class StartInterviewRequest {
     private String difficulty;
     
     private String topic;
+
+    private Integer durationMinutes;
 }

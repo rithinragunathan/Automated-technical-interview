@@ -1,5 +1,5 @@
 CREATE TABLE technical_answers (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     interview_id BIGINT NOT NULL REFERENCES interviews(id) ON DELETE CASCADE,
     interview_question_id BIGINT NOT NULL REFERENCES interview_questions(id) ON DELETE CASCADE,
     answer_text TEXT NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE technical_answers (
 );
 
 CREATE TABLE scores (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     interview_id BIGINT NOT NULL UNIQUE REFERENCES interviews(id) ON DELETE CASCADE,
     overall_score NUMERIC(5,2) NOT NULL DEFAULT 0,
     coding_score NUMERIC(5,2) NOT NULL DEFAULT 0,
@@ -25,7 +25,7 @@ CREATE TABLE scores (
 );
 
 CREATE TABLE score_components (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     score_id BIGINT NOT NULL REFERENCES scores(id) ON DELETE CASCADE,
     component_name VARCHAR(100) NOT NULL,
     component_value NUMERIC(5,2) NOT NULL,

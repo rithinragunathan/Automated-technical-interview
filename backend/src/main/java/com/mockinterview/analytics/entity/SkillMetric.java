@@ -28,7 +28,7 @@ public class SkillMetric {
     @Column(name = "skill_name", nullable = false, length = 100)
     private String skillName;
 
-    @Column(nullable = false, precision = 5, scale = 2)
+    @Column(nullable = false)
     private double score;
 
     @Column(name = "recorded_at", nullable = false, updatable = false)

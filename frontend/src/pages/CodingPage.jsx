@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Play, Send, RefreshCw, ChevronLeft } from 'lucide-react';
 import CodeEditor from '../components/coding/CodeEditor';
 import ProblemPanel from '../components/coding/ProblemPanel';
@@ -7,13 +7,13 @@ import TestCasePanel from '../components/coding/TestCasePanel';
 import ExecutionStatus from '../components/coding/ExecutionStatus';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { getProblem } from '../api/problems';
-import { runCode } from '../api/submissions';
-import useWebSocket from '../hooks/useWebSocket';
+import { createSubmission, runCode } from '../api/submissions';
 import { SUBMISSION_STATUS, LANGUAGES } from '../utils/constants';
 import toast from 'react-hot-toast';
 
 const CodingPage = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const [problem, setProblem] = useState(null);
   const [loading, setLoading] = useState(true);
   
@@ -25,8 +25,17 @@ const CodingPage = () => {
   const [status, setStatus] = useState(SUBMISSION_STATUS.IDLE);
   const [results, setResults] = useState(null);
   const [metrics, setMetrics] = useState(null);
-  
-  const { connect, disconnect } = useWebSocket();
+
+  const interviewId = searchParams.get('interviewId');
+  const getStarterCode = (data, lang) => {
+    const starterCodeByLanguage = {
+      JAVA: data?.starterCodeJava,
+      PYTHON: data?.starterCodePython,
+      CPP: data?.starterCodeCpp
+    };
+
+    return starterCodeByLanguage[lang.id] || '// Write your code here\n';
+  };
 
   useEffect(() => {
     const fetchProblem = async () => {
@@ -34,42 +43,16 @@ const CodingPage = () => {
         const data = await getProblem(id);
         setProblem(data);
         // Set initial code based on language
-        setCode(data.templates?.[language.id] || '// Write your code here\n');
+        setCode(getStarterCode(data, language));
       } catch (err) {
-        // Mock data
-        const mockProb = {
-          id: id,
-          title: "Two Sum",
-          difficulty: "EASY",
-          topic: "Arrays",
-          description: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.",
-          examples: [
-            { input: "nums = [2,7,11,15], target = 9", output: "[0,1]", explanation: "Because nums[0] + nums[1] == 9, we return [0, 1]." }
-          ],
-          constraints: ["2 <= nums.length <= 10^4", "-10^9 <= nums[i] <= 10^9", "-10^9 <= target <= 10^9"],
-          templates: {
-            JAVA: 'class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        \n    }\n}'
-          }
-        };
-        setProblem(mockProb);
-        setCode(mockProb.templates.JAVA);
+        console.error('Failed to load problem:', err);
+        toast.error('Failed to load problem');
       } finally {
         setLoading(false);
       }
     };
     fetchProblem();
   }, [id]);
-
-  // Handle WebSocket updates
-  const handleWsMessage = (payload) => {
-    if (payload.status) setStatus(payload.status);
-    if (payload.results) setResults(payload.results);
-    if (payload.metrics) setMetrics(payload.metrics);
-    
-    if (payload.status === SUBMISSION_STATUS.DONE || payload.status === SUBMISSION_STATUS.ERROR) {
-      disconnect();
-    }
-  };
 
   const handleRun = async (isSubmit = false) => {
     if (!code.trim()) {
@@ -82,32 +65,29 @@ const CodingPage = () => {
     setMetrics(null);
     
     try {
-      const response = await runCode({
+      const request = {
         problemId: problem.id,
-        code: code,
-        languageId: language.id,
-        isSubmit: isSubmit
-      });
+        interviewId: interviewId ? Number(interviewId) : null,
+        language: language.id,
+        sourceCode: code,
+        executionType: isSubmit ? 'SUBMIT' : 'RUN'
+      };
+      const response = isSubmit ? await createSubmission(request) : await runCode(request);
       
-      const submissionId = response.submissionId || 'mock-sub-123';
-      
-      // Connect to WS for real-time updates
-      connect(submissionId, handleWsMessage);
-      
-      // Fallback simulation if no real backend
-      setTimeout(() => setStatus(SUBMISSION_STATUS.COMPILING), 1000);
-      setTimeout(() => setStatus(SUBMISSION_STATUS.RUNNING), 2500);
-      setTimeout(() => {
-        setStatus(SUBMISSION_STATUS.DONE);
-        setResults([
-          { status: 'PASSED', input: '[2,7,11,15]\n9', expectedOutput: '[0,1]', actualOutput: '[0,1]', consoleOutput: '' },
-          { status: 'PASSED', input: '[3,2,4]\n6', expectedOutput: '[1,2]', actualOutput: '[1,2]', consoleOutput: '' }
-        ]);
-        setMetrics({ timeMs: 42, memoryKb: 38400 });
-        if (isSubmit) toast.success('Accepted! All test cases passed.');
-      }, 4000);
+      const testCaseById = new Map((problem.publicTestCases || []).map(testCase => [testCase.id, testCase]));
+      setResults((response.testResults || []).map(result => ({
+        status: result.passed ? 'PASSED' : 'FAILED',
+        input: testCaseById.get(result.testCaseId)?.input || 'Hidden test case',
+        expectedOutput: testCaseById.get(result.testCaseId)?.expectedOutput || 'Hidden test case',
+        actualOutput: result.actualOutput,
+        errorMessage: result.errorMessage,
+        consoleOutput: result.actualOutput
+      })));
+      setMetrics({ timeMs: response.executionTimeMs, memoryKb: response.memoryUsedKb });
+      setStatus(SUBMISSION_STATUS.DONE);
       
     } catch (err) {
+      console.error(err);
       setStatus(SUBMISSION_STATUS.ERROR);
       toast.error('Execution failed to start');
     }
@@ -116,14 +96,12 @@ const CodingPage = () => {
   const handleLanguageChange = (e) => {
     const lang = LANGUAGES.find(l => l.id === e.target.value);
     setLanguage(lang);
-    if (problem?.templates?.[lang.id]) {
-      setCode(problem.templates[lang.id]);
-    }
+    setCode(getStarterCode(problem, lang));
   };
 
   const handleReset = () => {
     if (window.confirm('Are you sure you want to reset your code? This cannot be undone.')) {
-      setCode(problem?.templates?.[language.id] || '');
+      setCode(getStarterCode(problem, language));
     }
   };
 
@@ -134,7 +112,11 @@ const CodingPage = () => {
       {/* Header */}
       <header className="h-14 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center">
-          <Link to="/problems" className="mr-4 text-gray-400 hover:text-white transition-colors">
+          <Link
+            to={interviewId ? `/interviews/${interviewId}/live` : '/problems'}
+            className="mr-4 text-gray-400 hover:text-white transition-colors"
+            aria-label={interviewId ? 'Return to interview' : 'Return to problem library'}
+          >
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <span className="font-semibold text-white tracking-tight">{problem?.title}</span>
@@ -205,7 +187,7 @@ const CodingPage = () => {
 
           {/* Output Panel (fixed height or resizable, sticking to fixed for now) */}
           <div className="h-[250px] flex-shrink-0">
-            <TestCasePanel results={results} status={status} metrics={metrics} />
+              <TestCasePanel results={results} status={status} metrics={metrics} testCases={problem?.publicTestCases} />
           </div>
         </div>
       </main>

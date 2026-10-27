@@ -22,6 +22,9 @@ client.interceptors.request.use(
 
 client.interceptors.response.use(
   (response) => {
+    if (response.data && response.data.data !== undefined) {
+      return response.data.data;
+    }
     return response.data;
   },
   (error) => {

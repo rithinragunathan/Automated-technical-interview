@@ -30,11 +30,16 @@ public class CodingProblemService {
         this.testCaseRepository = testCaseRepository;
     }
 
-    public Page<CodingProblemSummaryDto> getProblems(Pageable pageable, String difficulty, String topic) {
+    public Page<CodingProblemSummaryDto> getProblems(Pageable pageable, String difficulty, String topic, String search) {
         // Basic implementation, for production we'd use Specifications or QueryDSL
+        String normalizedSearch = search == null ? "" : search.trim().toLowerCase();
         List<CodingProblemSummaryDto> problems = codingProblemRepository.findAllByActiveTrue().stream()
                 .filter(p -> difficulty == null || p.getDifficulty().name().equalsIgnoreCase(difficulty))
                 .filter(p -> topic == null || (p.getTopic() != null && p.getTopic().equalsIgnoreCase(topic)))
+                .filter(p -> normalizedSearch.isEmpty()
+                        || p.getTitle().toLowerCase().contains(normalizedSearch)
+                        || (p.getTopic() != null && p.getTopic().toLowerCase().contains(normalizedSearch))
+                        || (p.getTags() != null && p.getTags().toLowerCase().contains(normalizedSearch)))
                 .map(p -> new CodingProblemSummaryDto(
                         p.getId(),
                         p.getTitle(),
@@ -48,7 +53,7 @@ public class CodingProblemService {
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), problems.size());
         
-        if (start > problems.size()) {
+        if (start >= problems.size()) {
             return new PageImpl<>(Collections.emptyList(), pageable, problems.size());
         }
         

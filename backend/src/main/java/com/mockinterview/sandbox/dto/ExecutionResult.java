@@ -13,5 +13,5 @@ public class ExecutionResult {
     private Long memoryUsedKb;
     private String compilationError;
     private boolean timedOut;
-    private boolean systemError;
+    private String systemError;
 }

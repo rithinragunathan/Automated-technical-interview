@@ -9,6 +9,8 @@ import com.mockinterview.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.mockinterview.report.service.ReportService;
+import com.mockinterview.report.dto.InterviewReportDto;
 
 import java.util.List;
 
@@ -18,10 +20,12 @@ public class InterviewController {
 
     private final InterviewService interviewService;
     private final UserService userService;
+    private final ReportService reportService;
 
-    public InterviewController(InterviewService interviewService, UserService userService) {
+    public InterviewController(InterviewService interviewService, UserService userService, ReportService reportService) {
         this.interviewService = interviewService;
         this.userService = userService;
+        this.reportService = reportService;
     }
 
     @PostMapping
@@ -51,6 +55,13 @@ public class InterviewController {
     @PostMapping("/{id}/finish")
     public ResponseEntity<ApiResponse<InterviewDto>> finishInterview(@PathVariable Long id) {
         Long userId = userService.getCurrentUser().getId();
-        return ResponseEntity.ok(ApiResponse.success(interviewService.finishInterview(id, userId), "Interview finished"));
+        InterviewDto finished = interviewService.finishInterview(id, userId);
+        return ResponseEntity.ok(ApiResponse.success(finished, "Interview finished"));
+    }
+
+    @GetMapping("/{id}/report")
+    public ResponseEntity<ApiResponse<InterviewReportDto>> getInterviewReport(@PathVariable Long id) {
+        Long userId = userService.getCurrentUser().getId();
+        return ResponseEntity.ok(ApiResponse.success(reportService.generateReport(id, userId), "Report generated/retrieved"));
     }
 }

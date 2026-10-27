@@ -25,9 +25,10 @@ public class CodingProblemController {
     public ResponseEntity<ApiResponse<Page<CodingProblemSummaryDto>>> getProblems(
             Pageable pageable,
             @RequestParam(required = false) String difficulty,
-            @RequestParam(required = false) String topic
+            @RequestParam(required = false) String topic,
+            @RequestParam(required = false) String search
     ) {
-        Page<CodingProblemSummaryDto> page = codingProblemService.getProblems(pageable, difficulty, topic);
+        Page<CodingProblemSummaryDto> page = codingProblemService.getProblems(pageable, difficulty, topic, search);
         return ResponseEntity.ok(ApiResponse.success(page, "Problems retrieved"));
     }
 

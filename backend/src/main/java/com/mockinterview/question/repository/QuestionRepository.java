@@ -11,8 +11,10 @@ import java.util.List;
 @Repository
 public interface QuestionRepository extends JpaRepository<Question, Long> {
     List<Question> findByQuestionTypeAndDifficulty(Question.QuestionType type, Question.DifficultyLevel difficulty);
+    List<Question> findByQuestionTypeAndDifficultyAndActiveTrue(Question.QuestionType type, Question.DifficultyLevel difficulty);
+    List<Question> findByQuestionTypeAndActiveTrue(Question.QuestionType type);
     List<Question> findByTopic(String topic);
 
-    @Query(value = "SELECT * FROM questions q WHERE q.question_type = :type AND q.difficulty = :difficulty AND q.active = true ORDER BY RANDOM() LIMIT :count", nativeQuery = true)
+    @Query(value = "SELECT * FROM questions q WHERE q.question_type = :type AND q.difficulty = :difficulty AND q.active = true ORDER BY RAND() LIMIT :count", nativeQuery = true)
     List<Question> findRandom(@Param("type") String type, @Param("difficulty") String difficulty, @Param("count") int count);
 }

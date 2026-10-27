@@ -5,6 +5,8 @@ import ConfirmDialog from '../components/common/ConfirmDialog';
 import Badge from '../components/common/Badge';
 import { getDifficultyColor } from '../utils/scoreHelpers';
 import toast from 'react-hot-toast';
+import { getProblems } from '../api/problems';
+import { deleteProblem } from '../api/admin';
 
 const ProblemManagementPage = () => {
   const [problems, setProblems] = useState([]);
@@ -13,20 +15,29 @@ const ProblemManagementPage = () => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
-    // Mock fetch
-    setTimeout(() => {
-      setProblems([
-        { id: '1', title: 'Two Sum', slug: 'two-sum', difficulty: 'EASY', topic: 'Arrays', testCasesCount: 5 }
-      ]);
-      setLoading(false);
-    }, 500);
+    const fetchProblems = async () => {
+      try {
+        const response = await getProblems();
+        setProblems(response.content || response);
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to load problems');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProblems();
   }, []);
 
-  const handleDelete = (id) => {
-    // Mock delete
-    setProblems(problems.filter(p => p.id !== id));
-    toast.success('Problem deleted');
-    setDeleteConfirm(null);
+  const handleDelete = async (id) => {
+    try {
+      await deleteProblem(id);
+      setProblems(current => current.filter(problem => problem.id !== id));
+      toast.success('Problem deleted');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete problem');
+    } finally {
+      setDeleteConfirm(null);
+    }
   };
 
   return (

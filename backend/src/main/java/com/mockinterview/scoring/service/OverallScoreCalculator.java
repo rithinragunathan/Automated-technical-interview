@@ -16,32 +16,36 @@ public class OverallScoreCalculator {
         this.appProperties = appProperties;
     }
 
-    public OverallScore calculate(double codingScore, double knowledgeScore, Double communicationScore, Double behaviorScore) {
+    public OverallScore calculate(Double codingScore, Double knowledgeScore, Double communicationScore, Double behaviorScore) {
         double wCoding = appProperties.getScoring().getWeights().getOrDefault("coding", 0.40);
         double wKnowledge = appProperties.getScoring().getWeights().getOrDefault("knowledge", 0.20);
         double wComm = appProperties.getScoring().getWeights().getOrDefault("communication", 0.20);
         double wBehavior = appProperties.getScoring().getWeights().getOrDefault("behavior", 0.20);
 
         if (communicationScore == null) {
-            double extra = wComm / 2;
-            wCoding += extra;
-            wKnowledge += extra;
+            wCoding += wComm / 2;
+            wKnowledge += wComm / 2;
             wComm = 0;
-            communicationScore = 0.0;
         }
 
         if (behaviorScore == null) {
-            double extra = wBehavior / 2;
-            wCoding += extra;
-            wKnowledge += extra;
+            wCoding += wBehavior / 2;
+            wKnowledge += wBehavior / 2;
             wBehavior = 0;
-            behaviorScore = 0.0;
         }
 
-        double overall = (codingScore * wCoding) +
-                         (knowledgeScore * wKnowledge) +
-                         (communicationScore * wComm) +
-                         (behaviorScore * wBehavior);
+        if (codingScore == null) wCoding = 0;
+        if (knowledgeScore == null) wKnowledge = 0;
+        if (communicationScore == null) wComm = 0;
+        if (behaviorScore == null) wBehavior = 0;
+
+        double totalWeight = wCoding + wKnowledge + wComm + wBehavior;
+        double overall = totalWeight == 0
+                ? 0
+                : ((codingScore != null ? codingScore * wCoding : 0)
+                    + (knowledgeScore != null ? knowledgeScore * wKnowledge : 0)
+                    + (communicationScore != null ? communicationScore * wComm : 0)
+                    + (behaviorScore != null ? behaviorScore * wBehavior : 0)) / totalWeight;
 
         Map<String, Integer> t = appProperties.getScoring().getThresholds();
         String level = "Expert";
@@ -51,14 +55,25 @@ public class OverallScoreCalculator {
         else if (overall <= t.getOrDefault("advanced-max", 89)) level = "Advanced";
 
         Map<String, Double> weights = new HashMap<>();
-        weights.put("coding", wCoding);
-        weights.put("knowledge", wKnowledge);
-        weights.put("communication", wComm);
-        weights.put("behavior", wBehavior);
+        weights.put("coding", totalWeight == 0 ? 0 : wCoding / totalWeight);
+        weights.put("knowledge", totalWeight == 0 ? 0 : wKnowledge / totalWeight);
+        weights.put("communication", totalWeight == 0 ? 0 : wComm / totalWeight);
+        weights.put("behavior", totalWeight == 0 ? 0 : wBehavior / totalWeight);
 
         String explanation = String.format("Coding(%.0f%%): %.1f + Knowledge(%.0f%%): %.1f + Comm(%.0f%%): %.1f + Behavior(%.0f%%): %.1f",
-                wCoding * 100, codingScore, wKnowledge * 100, knowledgeScore, wComm * 100, communicationScore, wBehavior * 100, behaviorScore);
+                weights.get("coding") * 100, codingScore != null ? codingScore : 0,
+                weights.get("knowledge") * 100, knowledgeScore != null ? knowledgeScore : 0,
+                weights.get("communication") * 100, communicationScore != null ? communicationScore : 0,
+                weights.get("behavior") * 100, behaviorScore != null ? behaviorScore : 0);
 
-        return new OverallScore(codingScore, knowledgeScore, communicationScore, behaviorScore, overall, level, weights, explanation);
+        return new OverallScore(
+                codingScore != null ? codingScore : 0,
+                knowledgeScore != null ? knowledgeScore : 0,
+                communicationScore,
+                behaviorScore,
+                overall,
+                level,
+                weights,
+                explanation);
     }
 }

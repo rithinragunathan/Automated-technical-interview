@@ -21,14 +21,7 @@ const InterviewInstructionsPage = () => {
         const data = await getInterview(id);
         setInterview(data);
       } catch (err) {
-        // Fallback for development if API is not ready
-        setInterview({
-          id,
-          type: 'CODING',
-          topic: 'DATA_STRUCTURES',
-          durationMinutes: 45
-        });
-        console.log('Using mock interview data');
+        setError(err.response?.data?.message || 'Failed to load interview instructions');
       } finally {
         setLoading(false);
       }
@@ -43,8 +36,7 @@ const InterviewInstructionsPage = () => {
       await startInterview(id);
       navigate(`/interviews/${id}/live`);
     } catch (err) {
-      // Fallback for dev
-      navigate(`/interviews/${id}/live`);
+      toast.error(err.response?.data?.message || 'Failed to start interview');
     } finally {
       setIsStarting(false);
     }
@@ -66,15 +58,15 @@ const InterviewInstructionsPage = () => {
           <div className="flex flex-wrap gap-4 bg-[#0f1117] p-4 rounded-md border border-[#30363d]">
             <div className="flex items-center text-gray-300">
               <Clock className="w-5 h-5 mr-2 text-brand-400" />
-              <span>Duration: <strong>{interview.durationMinutes} mins</strong></span>
+              <span>Duration: <strong>{Math.ceil((interview.durationSeconds || 2700) / 60)} mins</strong></span>
             </div>
             <div className="flex items-center text-gray-300 ml-0 sm:ml-4">
-              {interview.type === 'CODING' ? (
+              {interview.interviewType === 'CODING' ? (
                 <Code className="w-5 h-5 mr-2 text-brand-400" />
               ) : (
                 <MessageSquare className="w-5 h-5 mr-2 text-brand-400" />
               )}
-              <span>Format: <strong>{interview.type.replace('_', ' ')}</strong></span>
+              <span>Format: <strong>{(interview.interviewType || 'MOCK').replaceAll('_', ' ')}</strong></span>
             </div>
           </div>
 

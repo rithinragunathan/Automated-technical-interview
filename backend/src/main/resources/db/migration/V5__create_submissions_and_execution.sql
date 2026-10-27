@@ -1,15 +1,12 @@
-CREATE TYPE submission_status AS ENUM ('PENDING', 'RUNNING', 'ACCEPTED', 'WRONG_ANSWER', 'TIME_LIMIT_EXCEEDED', 'MEMORY_LIMIT_EXCEEDED', 'RUNTIME_ERROR', 'COMPILATION_ERROR', 'SYSTEM_ERROR');
-CREATE TYPE execution_type AS ENUM ('RUN', 'SUBMIT');
-
 CREATE TABLE submissions (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     problem_id BIGINT NOT NULL REFERENCES coding_problems(id),
     interview_id BIGINT REFERENCES interviews(id),
     language VARCHAR(50) NOT NULL DEFAULT 'java',
     source_code TEXT NOT NULL,
-    execution_type execution_type NOT NULL DEFAULT 'RUN',
-    status submission_status NOT NULL DEFAULT 'PENDING',
+    execution_type VARCHAR(20) NOT NULL DEFAULT 'RUN',
+    status VARCHAR(40) NOT NULL DEFAULT 'PENDING',
     passed_tests INTEGER NOT NULL DEFAULT 0,
     total_tests INTEGER NOT NULL DEFAULT 0,
     execution_time_ms BIGINT,
@@ -19,7 +16,7 @@ CREATE TABLE submissions (
 );
 
 CREATE TABLE execution_results (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     submission_id BIGINT NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
     stdout TEXT,
     stderr TEXT,
@@ -32,7 +29,7 @@ CREATE TABLE execution_results (
 );
 
 CREATE TABLE test_results (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     submission_id BIGINT NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
     test_case_id BIGINT NOT NULL REFERENCES test_cases(id),
     passed BOOLEAN NOT NULL DEFAULT FALSE,

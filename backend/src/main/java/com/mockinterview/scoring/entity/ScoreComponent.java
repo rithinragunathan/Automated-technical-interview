@@ -22,13 +22,13 @@ public class ScoreComponent {
     @Column(name = "component_name", nullable = false, length = 100)
     private String componentName;
 
-    @Column(name = "component_value", nullable = false, precision = 5, scale = 2)
+    @Column(name = "component_value", nullable = false)
     private double componentValue;
 
-    @Column(nullable = false, precision = 5, scale = 4)
+    @Column(nullable = false)
     private double weight;
 
-    @Column(name = "weighted_value", nullable = false, precision = 5, scale = 2)
+    @Column(name = "weighted_value", nullable = false)
     private double weightedValue;
 
     @Column(columnDefinition = "TEXT")

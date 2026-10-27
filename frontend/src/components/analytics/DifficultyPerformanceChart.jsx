@@ -28,8 +28,7 @@ const DifficultyPerformanceChart = ({ data }) => {
             contentStyle={{ backgroundColor: '#161b22', borderColor: '#30363d', color: '#e6edf3', borderRadius: '8px' }}
           />
           <Legend wrapperStyle={{ paddingTop: '10px' }} />
-          <Bar dataKey="attempted" name="Attempted" fill="#30363d" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="solved" name="Solved" fill="#4c6ef5" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="score" name="Success Rate" fill="#4c6ef5" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

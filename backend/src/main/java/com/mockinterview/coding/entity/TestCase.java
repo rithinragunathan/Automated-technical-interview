@@ -29,7 +29,7 @@ public class TestCase {
     @Column(nullable = false)
     private boolean hidden = false;
 
-    @Column(nullable = false, precision = 3, scale = 2)
+    @Column(nullable = false)
     private double weight = 1.0;
 
     private String description;

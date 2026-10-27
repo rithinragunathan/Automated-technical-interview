@@ -1,12 +1,10 @@
-CREATE TYPE interview_status AS ENUM ('PENDING', 'ACTIVE', 'COMPLETED', 'ABANDONED');
-
 CREATE TABLE interviews (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    interview_type interview_type NOT NULL,
-    difficulty difficulty_level NOT NULL,
+    interview_type VARCHAR(30) NOT NULL,
+    difficulty VARCHAR(20) NOT NULL,
     topic VARCHAR(100),
-    status interview_status NOT NULL DEFAULT 'PENDING',
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     start_time TIMESTAMP,
     end_time TIMESTAMP,
     duration_seconds INTEGER,
@@ -17,7 +15,7 @@ CREATE TABLE interviews (
 );
 
 CREATE TABLE interview_questions (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     interview_id BIGINT NOT NULL REFERENCES interviews(id) ON DELETE CASCADE,
     question_id BIGINT REFERENCES questions(id),
     coding_problem_id BIGINT REFERENCES coding_problems(id),

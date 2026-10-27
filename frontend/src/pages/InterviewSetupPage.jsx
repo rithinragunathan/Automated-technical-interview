@@ -10,7 +10,7 @@ const InterviewSetupPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     type: 'CODING',
-    difficulty: 'MEDIUM',
+    difficulty: 'EASY',
     topic: 'DATA_STRUCTURES'
   });
 
@@ -27,18 +27,17 @@ const InterviewSetupPage = () => {
     setIsSubmitting(true);
     try {
       const payload = {
-        ...formData,
+        interviewType: formData.type,
+        difficulty: formData.difficulty,
+        topic: formData.topic,
         durationMinutes: getDuration()
       };
-      
       const response = await createInterview(payload);
-      // For development fallback if API fails but we still want to navigate
-      const interviewId = response.id || 'temp-id-123';
       
       toast.success('Interview setup complete');
-      navigate(`/interviews/${interviewId}/instructions`);
+      navigate(`/interviews/${response.id}/instructions`);
     } catch (error) {
-      toast.error('Failed to create interview. Try again.');
+      toast.error(error.response?.data?.message || 'Failed to create interview. Try again.');
     } finally {
       setIsSubmitting(false);
     }

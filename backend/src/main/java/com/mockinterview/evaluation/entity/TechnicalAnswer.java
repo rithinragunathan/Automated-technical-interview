@@ -28,19 +28,19 @@ public class TechnicalAnswer {
     @Column(name = "answer_text", nullable = false, columnDefinition = "TEXT")
     private String answerText;
 
-    @Column(name = "accuracy_score", precision = 5, scale = 2)
+    @Column(name = "accuracy_score")
     private Double accuracyScore;
 
-    @Column(name = "relevance_score", precision = 5, scale = 2)
+    @Column(name = "relevance_score")
     private Double relevanceScore;
 
-    @Column(name = "depth_score", precision = 5, scale = 2)
+    @Column(name = "depth_score")
     private Double depthScore;
 
-    @Column(name = "clarity_score", precision = 5, scale = 2)
+    @Column(name = "clarity_score")
     private Double clarityScore;
 
-    @Column(name = "overall_score", precision = 5, scale = 2)
+    @Column(name = "overall_score")
     private Double overallScore;
 
     @Column(name = "ai_feedback", columnDefinition = "TEXT")

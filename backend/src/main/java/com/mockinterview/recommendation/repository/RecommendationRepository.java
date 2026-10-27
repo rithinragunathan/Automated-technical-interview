@@ -9,5 +9,7 @@ import java.util.List;
 @Repository
 public interface RecommendationRepository extends JpaRepository<Recommendation, Long> {
     List<Recommendation> findByUserIdOrderByPriorityAsc(Long userId);
+    List<Recommendation> findByInterviewId(Long interviewId);
     List<Recommendation> findByUserIdAndCompleted(Long userId, boolean completed);
+    java.util.Optional<Recommendation> findByIdAndUserId(Long id, Long userId);
 }

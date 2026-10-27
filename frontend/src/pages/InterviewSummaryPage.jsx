@@ -2,17 +2,27 @@ import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { getReport } from '../api/interviews';
+import toast from 'react-hot-toast';
 
 const InterviewSummaryPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Simulate generation time then redirect
-    const timer = setTimeout(() => {
-      navigate(`/interviews/${id}/report`, { replace: true });
-    }, 3000);
-    return () => clearTimeout(timer);
+    let mounted = true;
+    const fetchAndNavigate = async () => {
+      try {
+        await getReport(id); // Wakes up the generation or fetches it
+        if (mounted) navigate(`/interviews/${id}/report`, { replace: true });
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to generate report');
+        if (mounted) navigate('/dashboard', { replace: true });
+      }
+    };
+    fetchAndNavigate();
+    return () => { mounted = false; };
   }, [id, navigate]);
 
   return (

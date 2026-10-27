@@ -2,6 +2,7 @@ package com.mockinterview.analytics.controller;
 
 import com.mockinterview.analytics.dto.AnalyticsDashboardDto;
 import com.mockinterview.analytics.service.AnalyticsService;
+import com.mockinterview.auth.entity.User;
 import com.mockinterview.common.response.ApiResponse;
 import com.mockinterview.user.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +24,7 @@ public class AnalyticsController {
 
     @GetMapping("/dashboard")
     public ResponseEntity<ApiResponse<AnalyticsDashboardDto>> getDashboard() {
-        Long userId = userService.getCurrentUser().getId();
-        return ResponseEntity.ok(ApiResponse.success(analyticsService.getDashboard(userId), "Analytics retrieved"));
+        User user = userService.getCurrentUser();
+        return ResponseEntity.ok(ApiResponse.success(analyticsService.getDashboard(user.getId()), "Analytics dashboard retrieved"));
     }
 }

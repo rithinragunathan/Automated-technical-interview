@@ -15,12 +15,8 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       if (token) {
         try {
-          const storedUser = localStorage.getItem('mockUser');
-          if (storedUser) {
-            setUser(JSON.parse(storedUser));
-          } else {
-            logout();
-          }
+          const profile = await getMe();
+          setUser(profile);
         } catch (error) {
           console.error("Session expired or invalid token", error);
           logout();
@@ -34,54 +30,56 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const isMockAdmin = email.includes('admin');
-      const mockUser = {
-        id: isMockAdmin ? 'admin-1' : 'user-1',
-        name: isMockAdmin ? 'Admin Mock' : 'User Mock',
-        email: email,
-        role: isMockAdmin ? 'ADMIN' : 'USER'
-      };
-      
-      const mockToken = isMockAdmin ? 'mock-admin-token' : 'mock-user-token';
-      
-      localStorage.setItem('token', mockToken);
-      localStorage.setItem('mockUser', JSON.stringify(mockUser));
-      setToken(mockToken);
-      setUser(mockUser);
-      toast.success('Successfully logged in as ' + mockUser.role + ' (Mock)');
+      const response = await apiLogin(email, password);
+      localStorage.setItem('token', response.accessToken);
+      setToken(response.accessToken);
+      setUser({
+        id: response.userId,
+        email: response.email,
+        fullName: response.fullName,
+        role: response.role,
+      });
+      toast.success('Successfully logged in');
       return { success: true };
     } catch (error) {
-      toast.error('Mock login failed');
-      return { success: false, error: 'Mock error' };
+      const message = error.response?.data?.message || 'Login failed';
+      toast.error(message);
+      return { success: false, error: message };
     }
   };
 
   const register = async (userData) => {
     try {
-      const isMockAdmin = userData.email.includes('admin');
-      const mockUser = {
-        id: isMockAdmin ? 'admin-1' : 'user-1',
-        name: userData.name || (isMockAdmin ? 'Admin Mock' : 'User Mock'),
+      const response = await apiRegister({
+        fullName: userData.name,
         email: userData.email,
-        role: isMockAdmin ? 'ADMIN' : 'USER'
-      };
-      
-      const mockToken = isMockAdmin ? 'mock-admin-token' : 'mock-user-token';
-      
-      localStorage.setItem('token', mockToken);
-      localStorage.setItem('mockUser', JSON.stringify(mockUser));
-      setToken(mockToken);
-      setUser(mockUser);
-      toast.success('Registration successful as ' + mockUser.role + ' (Mock)!');
+        password: userData.password,
+        college: userData.college,
+        department: userData.department,
+        yearOfStudy: userData.yearOfStudy ? Number(userData.yearOfStudy) : null,
+        skills: userData.skills,
+        preferredLanguage: userData.preferredLanguage,
+      });
+      localStorage.setItem('token', response.accessToken);
+      setToken(response.accessToken);
+      setUser({
+        id: response.userId,
+        email: response.email,
+        fullName: response.fullName,
+        role: response.role,
+      });
+      toast.success('Registration successful');
       return { success: true };
     } catch (error) {
-      toast.error('Mock registration failed');
-      return { success: false, error: 'Mock error' };
+      const message = error.response?.data?.message || 'Registration failed';
+      toast.error(message);
+      return { success: false, error: message };
     }
   };
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('mockUser');
     setToken(null);
     setUser(null);
     delete client.defaults.headers.common['Authorization'];
@@ -92,7 +90,7 @@ export const AuthProvider = ({ children }) => {
     token,
     loading,
     isAuthenticated: !!user,
-    isAdmin: user?.role === 'ADMIN',
+    isAdmin: user?.role === 'ADMIN' || user?.role === 'ROLE_ADMIN',
     login,
     register,
     logout

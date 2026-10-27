@@ -51,6 +51,11 @@ Access the application at http://localhost.
 - Copy `.env.example` to `.env`, set `GEMINI_API_KEY`, and configure the local database and runtime settings.
 - For local dev out of Docker, you can start MySQL and Redis using `docker compose up mysql redis -d`.
 
+## Interview Practice
+- Technical Q&A and Mixed interviews generate topic- and difficulty-specific questions with Gemini when the interview is created. A valid `GEMINI_API_KEY` is required; question generation errors are shown instead of silently substituting unrelated sample questions.
+- In the live interview, use **Answer by voice** to dictate an answer. The browser transcribes speech into the answer box; review the transcript and stop listening before submitting. Typed answers remain available.
+- Voice dictation uses the browser's Web Speech API and requires microphone permission. Browser support varies; use a supported browser or type the answer if voice recognition is unavailable.
+
 ## Module Descriptions
 - **frontend**: React SPA.
 - **backend**: Spring Boot REST API for managing users, questions, and evaluating responses.

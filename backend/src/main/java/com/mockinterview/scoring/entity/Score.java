@@ -20,19 +20,19 @@ public class Score {
     @JoinColumn(name = "interview_id", nullable = false, unique = true)
     private Interview interview;
 
-    @Column(name = "overall_score", nullable = false, precision = 5, scale = 2)
+    @Column(name = "overall_score", nullable = false)
     private double overallScore = 0.0;
 
-    @Column(name = "coding_score", nullable = false, precision = 5, scale = 2)
+    @Column(name = "coding_score", nullable = false)
     private double codingScore = 0.0;
 
-    @Column(name = "knowledge_score", nullable = false, precision = 5, scale = 2)
+    @Column(name = "knowledge_score", nullable = false)
     private double knowledgeScore = 0.0;
 
-    @Column(name = "communication_score", precision = 5, scale = 2)
+    @Column(name = "communication_score")
     private Double communicationScore;
 
-    @Column(name = "behavior_score", precision = 5, scale = 2)
+    @Column(name = "behavior_score")
     private Double behaviorScore;
 
     @Column(name = "proficiency_level", length = 50)

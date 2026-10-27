@@ -15,16 +15,8 @@ const AdminDashboardPage = () => {
         const data = await getAdminStats();
         setStats(data);
       } catch (err) {
-        setStats({
-          totalUsers: 1250,
-          totalInterviews: 8430,
-          totalProblems: 245,
-          totalSubmissions: 45200,
-          recentUsers: [
-            { id: 1, name: 'Alice Smith', email: 'alice@example.com', role: 'USER', joined: '2023-11-20' },
-            { id: 2, name: 'Bob Johnson', email: 'bob@example.com', role: 'USER', joined: '2023-11-19' }
-          ]
-        });
+        console.error('Admin dashboard error:', err);
+        setStats(null);
       } finally {
         setLoading(false);
       }

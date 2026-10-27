@@ -1,10 +1,10 @@
 CREATE TABLE candidate_profiles (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     college VARCHAR(255),
     department VARCHAR(255),
     year_of_study INTEGER,
-    skills TEXT[],
+    skills TEXT,
     preferred_language VARCHAR(50) DEFAULT 'java',
     github_url VARCHAR(500),
     linkedin_url VARCHAR(500),
