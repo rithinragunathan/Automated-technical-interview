@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, Clock, Server } from 'lucide-react';
 
-const TestCasePanel = ({ results, status, metrics, testCases = [] }) => {
+const TestCasePanel = ({ results, status, metrics, testCases = [], executionSummary }) => {
   const [activeTab, setActiveTab] = useState('testcases');
+  const completedResults = Array.isArray(results) ? results : [];
+  const executionFinished = status === 'DONE' || (status === 'ERROR' && executionSummary);
 
   const tabs = [
     { id: 'testcases', label: 'Test Cases' },
@@ -44,6 +46,14 @@ const TestCasePanel = ({ results, status, metrics, testCases = [] }) => {
       </div>
 
       <div className="flex-grow overflow-y-auto p-4 font-mono">
+        {executionFinished && executionSummary && (
+          <div className="mb-4 rounded-md border border-[#30363d] bg-[#0f1117] px-3 py-2 font-sans text-xs text-gray-300" role="status">
+            <span className="font-semibold">{executionSummary.status.replaceAll('_', ' ')}</span>
+            <span className="mx-2 text-gray-500">·</span>
+            {executionSummary.passedTests} of {executionSummary.totalTests} test cases passed
+          </div>
+        )}
+
         {status === 'IDLE' && !results && (
           testCases.length > 0 ? (
             <div className="space-y-3">
@@ -68,9 +78,9 @@ const TestCasePanel = ({ results, status, metrics, testCases = [] }) => {
           </div>
         )}
 
-        {status === 'DONE' && activeTab === 'testcases' && results && (
+        {executionFinished && activeTab === 'testcases' && completedResults.length > 0 && (
           <div className="space-y-4">
-            {results.map((result, idx) => (
+            {completedResults.map((result, idx) => (
               <div key={idx} className={`border rounded-md p-3 ${
                 result.status === 'PASSED' ? 'bg-green-900/10 border-green-900/30' :
                 result.status === 'FAILED' ? 'bg-red-900/10 border-red-900/30' :
@@ -97,7 +107,7 @@ const TestCasePanel = ({ results, status, metrics, testCases = [] }) => {
                   <div>
                     <div className="text-gray-500 mb-1">Actual Output:</div>
                     <div className={`bg-[#0f1117] p-2 rounded overflow-x-auto whitespace-pre-wrap ${result.status === 'PASSED' ? 'text-green-400' : 'text-red-400'}`}>
-                      {result.actualOutput || '(no output)'}
+                      {result.actualOutput || '(no output was produced)'}
                     </div>
                   </div>
                   {result.status !== 'PASSED' && result.errorMessage && (
@@ -112,17 +122,47 @@ const TestCasePanel = ({ results, status, metrics, testCases = [] }) => {
           </div>
         )}
 
-        {status === 'DONE' && activeTab === 'output' && results && (
+        {executionFinished && activeTab === 'testcases' && completedResults.length === 0 && (
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-center font-sans" role="status">
+            <AlertTriangle className={`h-6 w-6 ${executionSummary?.status === 'COMPILATION_ERROR' ? 'text-red-500' : 'text-yellow-500'}`} />
+            <p className="font-medium text-gray-200">
+              {executionSummary?.status === 'COMPILATION_ERROR'
+                ? 'Compilation failed, but the server did not return compiler diagnostics.'
+                : 'Execution finished without test case details.'}
+            </p>
+            <p className="max-w-md text-xs text-gray-400">
+              {executionSummary?.status === 'COMPILATION_ERROR'
+                ? 'Restart the backend service and run the code again to see the compiler error.'
+                : 'Check the execution status above, then try running the code again. If this keeps happening, review the problem input format.'}
+            </p>
+          </div>
+        )}
+
+        {executionFinished && activeTab === 'output' && (
           <div className="bg-[#0f1117] p-4 rounded-md h-full overflow-y-auto">
-            {results.some(r => r.consoleOutput) ? (
-               results.map((result, idx) => result.consoleOutput && (
+            {completedResults.some(result => result.consoleOutput) ? (
+               completedResults.map((result, idx) => result.consoleOutput && (
                  <div key={idx} className="mb-4">
                     <div className="text-gray-500 text-xs mb-1">From Test Case {idx + 1}:</div>
                     <pre className="text-gray-300 text-xs whitespace-pre-wrap">{result.consoleOutput}</pre>
                  </div>
                ))
             ) : (
-              <span className="text-gray-600">No console output.</span>
+              <span className="text-gray-600">
+                {completedResults.length === 0
+                  ? executionSummary?.status === 'COMPILATION_ERROR'
+                    ? 'Compilation failed, but the server did not return compiler diagnostics. Restart the backend service and run the code again.'
+                    : 'No test case output was returned. Check the execution status above.'
+                  : 'The program did not print any console output.'}
+              </span>
+            )}
+
+            {status === 'ERROR' && !executionSummary && (
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-center font-sans" role="alert">
+                <AlertTriangle className="h-6 w-6 text-red-500" />
+                <p className="font-medium text-gray-200">Execution could not be completed.</p>
+                <p className="text-xs text-gray-400">Check your connection and try running the code again.</p>
+              </div>
             )}
           </div>
         )}

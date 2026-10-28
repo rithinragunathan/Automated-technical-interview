@@ -35,7 +35,7 @@ class RecommendationEngineTest {
         RecommendationEngine engine = new RecommendationEngine(
                 recommendationRepository, userRepository, interviewRepository);
 
-        List<Recommendation> saved = engine.generateRecommendations(7L, 12L, strongCodingBreakdown(), 50);
+        List<Recommendation> saved = engine.generateRecommendations(7L, 12L, strongCodingBreakdown(), 50.0);
 
         assertEquals(1, saved.size());
         assertEquals("Build on your progress", saved.get(0).getTitle());
@@ -60,12 +60,51 @@ class RecommendationEngineTest {
         RecommendationEngine engine = new RecommendationEngine(
                 recommendationRepository, userRepository, interviewRepository);
 
-        List<Recommendation> firstSave = engine.generateRecommendations(7L, 12L, strongCodingBreakdown(), 50);
-        List<Recommendation> secondSave = engine.generateRecommendations(7L, 12L, strongCodingBreakdown(), 50);
+        List<Recommendation> firstSave = engine.generateRecommendations(7L, 12L, strongCodingBreakdown(), 50.0);
+        List<Recommendation> secondSave = engine.generateRecommendations(7L, 12L, strongCodingBreakdown(), 50.0);
 
         assertEquals(1, firstSave.size());
         assertEquals(0, secondSave.size());
         verify(recommendationRepository, org.mockito.Mockito.times(2)).saveAll(anyList());
+    }
+
+    @Test
+    void createsUsefulRecommendationWhenInterviewHasNoRecordedAnswersOrSubmissions() {
+        RecommendationRepository recommendationRepository = mock(RecommendationRepository.class);
+        UserRepository userRepository = mock(UserRepository.class);
+        InterviewRepository interviewRepository = mock(InterviewRepository.class);
+        when(userRepository.getReferenceById(7L)).thenReturn(mock(User.class));
+        when(interviewRepository.getReferenceById(12L)).thenReturn(mock(Interview.class));
+        when(recommendationRepository.findByInterviewId(12L)).thenReturn(List.of());
+        when(recommendationRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RecommendationEngine engine = new RecommendationEngine(
+                recommendationRepository, userRepository, interviewRepository);
+
+        List<Recommendation> saved = engine.generateRecommendations(7L, 12L, null, null);
+
+        assertEquals(1, saved.size());
+        assertEquals("Complete a practice exercise", saved.get(0).getTitle());
+        assertEquals("NEXT_STEPS", saved.get(0).getCategory());
+    }
+
+    @Test
+    void recommendsClearerTechnicalAnswersForLowKnowledgeScores() {
+        RecommendationRepository recommendationRepository = mock(RecommendationRepository.class);
+        UserRepository userRepository = mock(UserRepository.class);
+        InterviewRepository interviewRepository = mock(InterviewRepository.class);
+        when(userRepository.getReferenceById(7L)).thenReturn(mock(User.class));
+        when(interviewRepository.getReferenceById(12L)).thenReturn(mock(Interview.class));
+        when(recommendationRepository.findByInterviewId(12L)).thenReturn(List.of());
+        when(recommendationRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RecommendationEngine engine = new RecommendationEngine(
+                recommendationRepository, userRepository, interviewRepository);
+
+        List<Recommendation> saved = engine.generateRecommendations(7L, 12L, null, 45.0);
+
+        assertEquals(1, saved.size());
+        assertEquals("Structure Technical Answers", saved.get(0).getTitle());
     }
 
     private ScoreBreakdown strongCodingBreakdown() {

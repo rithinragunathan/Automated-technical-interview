@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
-import { Brain } from 'lucide-react';
+import { Code2 } from 'lucide-react';
 
 const AuthLayout = () => {
   return (
@@ -8,7 +8,7 @@ const AuthLayout = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <Link to="/" className="flex items-center text-brand-500 hover:text-brand-400">
-            <Brain className="w-10 h-10 mr-2" />
+            <Code2 className="w-10 h-10 mr-2" />
             <span className="text-3xl font-bold text-white tracking-tight">Mock<span className="text-brand-500">IQ</span></span>
           </Link>
         </div>

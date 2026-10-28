@@ -3,9 +3,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 const TopicPerformanceChart = ({ data }) => {
   const getBarColor = (score) => {
-    if (score >= 80) return '#2ea043';
-    if (score >= 60) return '#d29922';
-    return '#f85149';
+    if (score >= 80) return '#52786e';
+    if (score >= 60) return '#aa812d';
+    return '#ad5144';
   };
 
   return (
@@ -16,24 +16,24 @@ const TopicPerformanceChart = ({ data }) => {
           layout="vertical"
           margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#30363d" horizontal={true} vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e4e8e2" horizontal={true} vertical={false} />
           <XAxis 
             type="number" 
             domain={[0, 100]} 
-            stroke="#8b949e" 
-            tick={{ fill: '#8b949e', fontSize: 12 }}
+            stroke="#687169"
+            tick={{ fill: '#687169', fontSize: 12 }}
           />
           <YAxis 
             dataKey="topic" 
             type="category" 
-            stroke="#8b949e" 
-            tick={{ fill: '#8b949e', fontSize: 12 }}
+            stroke="#687169"
+            tick={{ fill: '#687169', fontSize: 12 }}
             axisLine={false}
             tickLine={false}
           />
           <Tooltip
-            cursor={{ fill: '#30363d', opacity: 0.4 }}
-            contentStyle={{ backgroundColor: '#161b22', borderColor: '#30363d', color: '#e6edf3', borderRadius: '8px' }}
+            cursor={{ fill: '#e4e8e2', opacity: 0.4 }}
+            contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e4e8e2', color: '#242a25', borderRadius: '8px' }}
           />
           <Bar dataKey="score" radius={[0, 4, 4, 0]} barSize={20}>
             {data?.map((entry, index) => (

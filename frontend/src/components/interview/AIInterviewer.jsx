@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Brain, User, Send, Loader2 } from 'lucide-react';
+import { MessageCircle, User, Send, Loader2 } from 'lucide-react';
 
 const AIInterviewer = ({ currentQuestion, messages, onSendMessage, isProcessing, isComplete = false, inputEnabled = true }) => {
   const [inputText, setInputText] = useState('');
@@ -31,11 +31,11 @@ const AIInterviewer = ({ currentQuestion, messages, onSendMessage, isProcessing,
     <div className="flex flex-col h-full bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
       <div className="p-4 border-b border-[#30363d] bg-[#0f1117] flex items-center">
         <div className="w-10 h-10 rounded-full bg-brand-900/50 flex items-center justify-center border border-brand-500/30 mr-3">
-          <Brain className="w-6 h-6 text-brand-400" />
+          <MessageCircle className="w-6 h-6 text-brand-400" />
         </div>
         <div>
           <h2 className="text-lg font-semibold text-white">Mock Interviewer</h2>
-          <p className="text-xs text-brand-400">MockIQ Assistant</p>
+          <p className="text-xs text-brand-400">Your practice partner</p>
         </div>
       </div>
 
@@ -46,7 +46,7 @@ const AIInterviewer = ({ currentQuestion, messages, onSendMessage, isProcessing,
               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                 msg.role === 'user' ? 'bg-[#30363d] ml-3' : 'bg-brand-900/50 border border-brand-500/30 mr-3'
               }`}>
-                {msg.role === 'user' ? <User className="w-4 h-4 text-gray-300" /> : <Brain className="w-4 h-4 text-brand-400" />}
+                {msg.role === 'user' ? <User className="w-4 h-4 text-gray-300" /> : <MessageCircle className="w-4 h-4 text-brand-400" />}
               </div>
               <div className={`px-4 py-3 rounded-lg ${
                 msg.role === 'user' 
@@ -67,11 +67,11 @@ const AIInterviewer = ({ currentQuestion, messages, onSendMessage, isProcessing,
           <div className="flex justify-start">
             <div className="flex max-w-[80%] flex-row">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-brand-900/50 border border-brand-500/30 mr-3 flex items-center justify-center">
-                <Brain className="w-4 h-4 text-brand-400" />
+                <MessageCircle className="w-4 h-4 text-brand-400" />
               </div>
               <div className="px-4 py-3 rounded-lg bg-brand-900/20 border border-brand-500/20 text-gray-200 rounded-tl-none flex items-center">
                 <Loader2 className="w-4 h-4 animate-spin text-brand-400 mr-2" />
-                <span className="text-sm">Preparing feedback...</span>
+                <span className="text-sm">Reviewing your answer...</span>
               </div>
             </div>
           </div>

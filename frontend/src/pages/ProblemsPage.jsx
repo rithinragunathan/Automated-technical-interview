@@ -135,7 +135,7 @@ const ProblemsPage = () => {
               </thead>
               <tbody className="divide-y divide-[#30363d]">
                 {problems.map((problem) => (
-                  <tr key={problem.id} className="hover:bg-[#30363d]/50 transition-colors">
+                  <tr key={problem.id} className="hover:bg-[#f3f6f3] transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-white">{problem.title}</div>
                     </td>
@@ -148,7 +148,7 @@ const ProblemsPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link 
                         to={`/problems/${problem.id}`}
-                        className="inline-flex items-center px-3 py-1.5 bg-[#30363d] hover:bg-brand-600 text-white rounded-md transition-colors"
+                        className="inline-flex items-center px-3 py-1.5 bg-brand-700 hover:bg-brand-800 text-white rounded-md transition-colors"
                       >
                         <Code className="w-4 h-4 mr-1.5" /> Solve
                       </Link>

@@ -10,5 +10,6 @@ import java.util.Optional;
 @Repository
 public interface InterviewQuestionRepository extends JpaRepository<InterviewQuestion, Long> {
     List<InterviewQuestion> findByInterviewIdOrderBySequenceNumber(Long interviewId);
+    List<InterviewQuestion> findTop25ByInterview_User_IdAndAiGeneratedTrueOrderByCreatedAtDesc(Long userId);
     Optional<InterviewQuestion> findByInterview_IdAndCodingProblem_Id(Long interviewId, Long codingProblemId);
 }

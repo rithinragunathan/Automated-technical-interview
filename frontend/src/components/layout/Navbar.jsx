@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Brain, LogOut, User } from 'lucide-react';
+import { Menu, Code2, LogOut, User } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 
 const Navbar = ({ onMenuClick }) => {
@@ -14,7 +14,7 @@ const Navbar = ({ onMenuClick }) => {
   };
 
   return (
-    <nav className="bg-[#161b22] border-b border-[#30363d] h-16 fixed w-full top-0 z-40 flex items-center justify-between px-4">
+    <nav className="app-navbar bg-[#161b22] border-b border-[#30363d] h-[4.5rem] fixed w-full top-0 z-40 flex items-center justify-between px-4 md:px-6">
       <div className="flex items-center">
         <button 
           onClick={onMenuClick}
@@ -23,8 +23,8 @@ const Navbar = ({ onMenuClick }) => {
           <Menu className="w-6 h-6" />
         </button>
         <Link to="/dashboard" className="flex items-center text-brand-500 hover:text-brand-400 transition-colors">
-          <Brain className="w-8 h-8 mr-2" />
-          <span className="text-xl font-bold text-white tracking-tight">Mock<span className="text-brand-500">IQ</span></span>
+          <Code2 className="w-8 h-8 mr-2" />
+          <span className="text-xl font-semibold text-white tracking-tight">Mock<span className="text-brand-600">IQ</span></span>
         </Link>
       </div>
 

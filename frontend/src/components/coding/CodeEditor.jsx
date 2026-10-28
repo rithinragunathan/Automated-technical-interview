@@ -10,7 +10,7 @@ const CodeEditor = ({ value, onChange, language = 'java', readOnly = false, heig
   };
 
   const loadingFallback = (
-    <div className="flex flex-col items-center justify-center h-full w-full bg-[#1e1e1e] text-gray-400">
+    <div className="flex flex-col items-center justify-center h-full w-full bg-white text-gray-500">
       <Loader2 className="w-8 h-8 animate-spin mb-4" />
       <p>Loading editor...</p>
     </div>
@@ -21,7 +21,7 @@ const CodeEditor = ({ value, onChange, language = 'java', readOnly = false, heig
       <Editor
         height="100%"
         language={language}
-        theme="vs-dark"
+        theme="vs"
         value={value}
         onChange={handleEditorChange}
         loading={loadingFallback}

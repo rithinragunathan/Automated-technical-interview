@@ -13,20 +13,20 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         position="top-right"
         toastOptions={{
           style: {
-            background: '#161b22',
-            color: '#e6edf3',
-            border: '1px solid #30363d',
+            background: '#ffffff',
+            color: '#242a25',
+            border: '1px solid #e4e8e2',
           },
           success: {
             iconTheme: {
-              primary: '#2ea043',
-              secondary: '#161b22',
+              primary: '#39734b',
+              secondary: '#ffffff',
             },
           },
           error: {
             iconTheme: {
-              primary: '#f85149',
-              secondary: '#161b22',
+              primary: '#ad5144',
+              secondary: '#ffffff',
             },
           },
         }}

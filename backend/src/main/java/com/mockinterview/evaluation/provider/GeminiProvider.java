@@ -10,6 +10,7 @@ import com.mockinterview.evaluation.dto.InterviewFeedback;
 import com.mockinterview.evaluation.dto.InterviewSummaryForAI;
 import com.mockinterview.evaluation.dto.QuestionGenerationConfig;
 import com.mockinterview.scoring.dto.ScoreBreakdown;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -21,8 +22,10 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @Slf4j
 @Component("geminiProvider")
@@ -32,40 +35,86 @@ public class GeminiProvider implements LLMProvider {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
 
+    @Autowired
     public GeminiProvider(AppProperties appProperties) {
+        this(appProperties, new RestTemplate());
+    }
+
+    GeminiProvider(AppProperties appProperties, RestTemplate restTemplate) {
         AppProperties.Ai.Gemini gemini = appProperties.getAi().getGemini();
         this.config = new GeminiConfig(gemini.getApiKey(), gemini.getBaseUrl(), gemini.getModel());
         this.objectMapper = new ObjectMapper();
-        this.restTemplate = new RestTemplate();
+        this.restTemplate = restTemplate;
     }
 
     @Override
     public List<GeneratedQuestion> generateQuestions(QuestionGenerationConfig request) {
-        JsonNode response = generateJson("""
+        List<String> excludedQuestions = new ArrayList<>(request.excludedQuestions());
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            JsonNode response = generateJson(questionPrompt(request, excludedQuestions));
+            List<GeneratedQuestion> result = new ArrayList<>();
+            Set<String> seen = excludedQuestions.stream()
+                    .map(GeminiProvider::normalizeQuestion)
+                    .collect(java.util.stream.Collectors.toCollection(HashSet::new));
+            boolean hasDuplicate = false;
+            for (JsonNode question : requiredArray(response, "questions")) {
+                GeneratedQuestion generated = new GeneratedQuestion(
+                        requiredText(question, "questionText"),
+                        requiredText(question, "questionType"),
+                        requiredText(question, "topic"),
+                        requiredText(question, "difficulty"));
+                result.add(generated);
+                if (!seen.add(normalizeQuestion(generated.questionText()))) {
+                    hasDuplicate = true;
+                }
+            }
+            if (result.size() != request.count()) {
+                throw new IllegalStateException("Gemini returned %d questions; expected %d"
+                        .formatted(result.size(), request.count()));
+            }
+            if (!hasDuplicate) {
+                return result;
+            }
+            excludedQuestions.addAll(result.stream().map(GeneratedQuestion::questionText).toList());
+        }
+        throw new IllegalStateException("Gemini returned repeated questions after three generation attempts");
+    }
+
+    private String questionPrompt(QuestionGenerationConfig request, List<String> excludedQuestions) {
+        String excluded = excludedQuestions.isEmpty()
+                ? "None"
+                : excludedQuestions.stream()
+                        .skip(Math.max(0, excludedQuestions.size() - 25))
+                        .limit(25)
+                        .map(question -> "- " + question)
+                        .collect(java.util.stream.Collectors.joining("\n"));
+        String questionGuidance = "Questions must be answerable aloud without requiring code execution. Keep each question focused and concise.";
+        if ("CODING".equalsIgnoreCase(request.interviewType())) {
+            questionGuidance = """
+                    Ask coding-interview questions about problem-solving approach, algorithm and data-structure choices,
+                    complexity analysis, edge cases, testing, or trade-offs. The candidate will answer aloud while completing
+                    a separate coding exercise in an IDE; do not ask them to write code as the spoken answer.""";
+        }
+        return """
                 Act as a technical interviewer. Generate exactly %d distinct, natural, spoken-answer-friendly interview questions.
                 Interview type: %s
                 Difficulty: %s
                 Topic: %s
-                Questions must be answerable aloud without requiring code execution. Keep each question focused and concise.
+                %s
+                Make each question meaningfully different from every other question and from the previously asked questions below.
                 Do not include answers, hints, introductions, markdown, or questions outside the requested topic.
+                Previously asked questions to avoid:
+                %s
                 Return JSON only in this shape, with questionType set to TECHNICAL:
                 {"questions":[{"questionText":"...","questionType":"TECHNICAL","topic":"...","difficulty":"..."}]}
-                """.formatted(request.count(), request.interviewType(), request.difficulty(),
+                """.formatted(request.count(), request.interviewType(), request.difficulty(), questionGuidance,
                 request.topic() == null ? "general technical interviews"
-                        : request.topic().replace('_', ' ').toLowerCase(Locale.ROOT)));
-        List<GeneratedQuestion> result = new ArrayList<>();
-        for (JsonNode question : requiredArray(response, "questions")) {
-            result.add(new GeneratedQuestion(
-                    requiredText(question, "questionText"),
-                    requiredText(question, "questionType"),
-                    requiredText(question, "topic"),
-                    requiredText(question, "difficulty")));
-        }
-        if (result.size() != request.count()) {
-            throw new IllegalStateException("Gemini returned %d questions; expected %d"
-                    .formatted(result.size(), request.count()));
-        }
-        return result;
+                        : request.topic().replace('_', ' ').toLowerCase(Locale.ROOT),
+                excluded);
+    }
+
+    private static String normalizeQuestion(String question) {
+        return question.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 
     @Override

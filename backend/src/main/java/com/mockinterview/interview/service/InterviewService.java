@@ -23,14 +23,21 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @Transactional
 public class InterviewService {
+
+    private static final int TECHNICAL_QUESTION_COUNT = 8;
+    private static final int CODING_TECHNICAL_QUESTION_COUNT = 8;
+    private static final int MIXED_TECHNICAL_QUESTION_COUNT = 4;
 
     private final InterviewRepository interviewRepository;
     private final InterviewQuestionRepository interviewQuestionRepository;
@@ -70,7 +77,7 @@ public class InterviewService {
     }
 
     private void attachQuestions(Interview interview, StartInterviewRequest request) {
-        int sequence = 1;
+        List<InterviewQuestion> interviewQuestions = new ArrayList<>();
         Interview.InterviewType type = interview.getInterviewType();
         if (type == Interview.InterviewType.CODING || type == Interview.InterviewType.MIXED) {
             List<CodingProblem> problems = codingProblemRepository.findByDifficultyAndActiveTrue(interview.getDifficulty());
@@ -102,36 +109,50 @@ public class InterviewService {
             if (!problems.isEmpty()) {
                 InterviewQuestion question = new InterviewQuestion();
                 question.setInterview(interview);
-                question.setCodingProblem(problems.get(0));
-                question.setSequenceNumber(sequence++);
-                interviewQuestionRepository.save(question);
+                question.setCodingProblem(problems.get(ThreadLocalRandom.current().nextInt(problems.size())));
+                interviewQuestions.add(question);
             }
         }
-        if (type == Interview.InterviewType.TECHNICAL_QA || type == Interview.InterviewType.MIXED) {
-            int questionCount = type == Interview.InterviewType.MIXED ? 2 : 5;
-            List<GeneratedQuestion> questions;
-            try {
-                questions = llmProvider.generateQuestions(new QuestionGenerationConfig(
-                        type.name(),
-                        interview.getDifficulty().name(),
-                        request.getTopic(),
-                        questionCount
-                ));
-            } catch (IllegalStateException ex) {
-                log.warn("Gemini could not generate questions for interview {}", interview.getId(), ex);
-                throw new ApiException("Gemini is temporarily unable to generate interview questions. Please try again shortly.", 503);
-            }
-            if (questions.size() != questionCount) {
-                throw new ApiException("Gemini did not generate the required number of interview questions. Please try again.", 502);
-            }
-            for (GeneratedQuestion question : questions) {
-                InterviewQuestion interviewQuestion = new InterviewQuestion();
-                interviewQuestion.setInterview(interview);
-                interviewQuestion.setAiGenerated(true);
-                interviewQuestion.setAiQuestionText(question.questionText());
-                interviewQuestion.setSequenceNumber(sequence++);
-                interviewQuestionRepository.save(interviewQuestion);
-            }
+        int questionCount = switch (type) {
+            case CODING -> CODING_TECHNICAL_QUESTION_COUNT;
+            case TECHNICAL_QA -> TECHNICAL_QUESTION_COUNT;
+            case MIXED -> MIXED_TECHNICAL_QUESTION_COUNT;
+        };
+        List<String> recentlyAskedQuestions = interviewQuestionRepository
+                .findTop25ByInterview_User_IdAndAiGeneratedTrueOrderByCreatedAtDesc(interview.getUser().getId())
+                .stream()
+                .map(InterviewQuestion::getAiQuestionText)
+                .filter(question -> question != null && !question.isBlank())
+                .toList();
+        List<GeneratedQuestion> questions;
+        try {
+            questions = llmProvider.generateQuestions(new QuestionGenerationConfig(
+                    type.name(),
+                    interview.getDifficulty().name(),
+                    request.getTopic(),
+                    questionCount,
+                    recentlyAskedQuestions
+            ));
+        } catch (IllegalStateException ex) {
+            log.warn("Gemini could not generate questions for interview {}", interview.getId(), ex);
+            throw new ApiException("Gemini is temporarily unable to generate interview questions. Please try again shortly.", 503);
+        }
+        if (questions.size() != questionCount) {
+            throw new ApiException("Gemini did not generate the required number of interview questions. Please try again.", 502);
+        }
+        for (GeneratedQuestion question : questions) {
+            InterviewQuestion interviewQuestion = new InterviewQuestion();
+            interviewQuestion.setInterview(interview);
+            interviewQuestion.setAiGenerated(true);
+            interviewQuestion.setAiQuestionText(question.questionText());
+            interviewQuestions.add(interviewQuestion);
+        }
+
+        Collections.shuffle(interviewQuestions);
+        for (int index = 0; index < interviewQuestions.size(); index++) {
+            InterviewQuestion question = interviewQuestions.get(index);
+            question.setSequenceNumber(index + 1);
+            interviewQuestionRepository.save(question);
         }
     }
 

@@ -30,12 +30,12 @@ const Sidebar = ({ isOpen, onClose }) => {
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-64 bg-[#0f1117] border-r border-[#30363d] z-40 transform transition-transform duration-300 ease-in-out lg:translate-x-0 overflow-y-auto ${
+      <aside className={`app-sidebar fixed top-[4.5rem] left-0 h-[calc(100vh-4.5rem)] w-64 bg-[#0f1117] border-r border-[#30363d] z-40 transform transition-transform duration-300 ease-in-out lg:translate-x-0 overflow-y-auto ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="py-6 px-4">
           <nav className="space-y-1">
-            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-3">
+            <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.12em] mb-3 px-3">
               Main Menu
             </div>
             {links.map((link) => (

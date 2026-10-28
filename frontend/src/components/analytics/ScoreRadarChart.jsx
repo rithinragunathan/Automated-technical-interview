@@ -14,18 +14,18 @@ const ScoreRadarChart = ({ data }) => {
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
-          <PolarGrid stroke="#30363d" />
-          <PolarAngleAxis dataKey="subject" tick={{ fill: '#8b949e', fontSize: 12 }} />
-          <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#8b949e' }} />
+          <PolarGrid stroke="#e4e8e2" />
+          <PolarAngleAxis dataKey="subject" tick={{ fill: '#687169', fontSize: 12 }} />
+          <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#687169' }} />
           <Tooltip 
-            contentStyle={{ backgroundColor: '#161b22', borderColor: '#30363d', color: '#e6edf3' }}
-            itemStyle={{ color: '#4c6ef5' }}
+            contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e4e8e2', color: '#242a25' }}
+            itemStyle={{ color: '#52786e' }}
           />
           <Radar
             name="Score"
             dataKey="score"
-            stroke="#4c6ef5"
-            fill="#4c6ef5"
+            stroke="#52786e"
+            fill="#52786e"
             fillOpacity={0.5}
           />
         </RadarChart>

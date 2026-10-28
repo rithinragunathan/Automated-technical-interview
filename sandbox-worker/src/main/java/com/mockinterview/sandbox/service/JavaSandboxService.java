@@ -36,22 +36,19 @@ public class JavaSandboxService {
 
         try {
             Files.createDirectories(workspacePath);
-            Path sourceFile = workspacePath.resolve("Main.java");
-            String sourceCode = request.getSourceCode();
-            if (request.getRunnerCode() != null && !request.getRunnerCode().isBlank()) {
-                sourceCode += "\n\n" + request.getRunnerCode();
-            }
-            Files.writeString(sourceFile, sourceCode);
+            boolean hasRunner = writeJavaSources(workspacePath, request.getSourceCode(), request.getRunnerCode());
             Files.writeString(workspacePath.resolve("input.txt"),
                     request.getStdin() == null ? "" : request.getStdin());
 
             String containerWorkspace = "/workspace/" + uuid;
+            String compileFiles = hasRunner ? "Main.java Solution.java" : "Main.java";
             String command = String.format(
-                    "cd %s && javac Main.java 2>compile_errors.txt; " +
+                    "cd %s && javac %s 2>compile_errors.txt; " +
                             "if [ $? -ne 0 ]; then printf 'COMPILE_ERROR\\n'; cat compile_errors.txt; exit 0; fi; " +
                             "printf 'COMPILE_OK\\n'; timeout %d java -Xmx200m -cp %s Main < input.txt >run.out 2>run.err; " +
                             "code=$?; cat run.out; if [ -s run.err ]; then printf '\\n===STDERR===\\n'; cat run.err; fi; exit $code",
                     containerWorkspace,
+                    compileFiles,
                     request.getTimeoutSeconds(),
                     containerWorkspace);
             Path executionLog = workspacePath.resolve("execution.log");
@@ -120,6 +117,16 @@ public class JavaSandboxService {
         } finally {
             deleteDirectory(workspacePath.toFile());
         }
+    }
+
+    static boolean writeJavaSources(Path workspacePath, String sourceCode, String runnerCode) throws IOException {
+        boolean hasRunner = runnerCode != null && !runnerCode.isBlank();
+        Path sourceFile = workspacePath.resolve(hasRunner ? "Solution.java" : "Main.java");
+        Files.writeString(sourceFile, sourceCode);
+        if (hasRunner) {
+            Files.writeString(workspacePath.resolve("Main.java"), runnerCode);
+        }
+        return hasRunner;
     }
 
     private void deleteDirectory(File directoryToBeDeleted) {

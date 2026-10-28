@@ -167,6 +167,22 @@ public class SubmissionService {
 
             if (result.getCompilationError() != null && !result.getCompilationError().isEmpty()) {
                 compilationError = true;
+                TestResult tr = new TestResult();
+                tr.setSubmission(savedSubmission);
+                tr.setTestCase(tc);
+                tr.setPassed(false);
+                tr.setActualOutput("");
+                tr.setErrorMessage(result.getCompilationError());
+                tr.setExecutionTimeMs(result.getExecutionTimeMs());
+                testResultRepository.save(tr);
+                testResultDtos.add(new TestResultDto(
+                        tc.getId(),
+                        false,
+                        "",
+                        result.getExecutionTimeMs(),
+                        result.getCompilationError(),
+                        i + 1
+                ));
                 break;
             }
             if (result.getExitCode() != null && result.getExitCode() != 0 && !result.isTimedOut()) {
@@ -261,14 +277,14 @@ public class SubmissionService {
                         savedSubmission.getUser().getId(),
                         savedSubmission.getInterview().getId(),
                         sb,
-                        50.0
+                        null
                 );
             } else {
                 recommendationEngine.generateRecommendations(
                         savedSubmission.getUser().getId(),
                         null,
                         sb,
-                        50.0
+                        null
                 );
             }
         }
@@ -297,34 +313,156 @@ public class SubmissionService {
                 .replaceAll("\\s+", " ");
     }
 
-    private String runnerCodeFor(String slug) {
-        if ("two-sum".equals(slug)) {
-            return "class Main {\n"
-                    + "    public static void main(String[] args) throws Exception {\n"
-                    + "        String input = new String(System.in.readAllBytes()).trim();\n"
-                    + "        int arrayStart = input.indexOf('[');\n"
-                    + "        int arrayEnd = input.indexOf(']', arrayStart);\n"
-                    + "        if (arrayStart < 0 || arrayEnd < 0) throw new IllegalArgumentException(\"Expected an array in bracket notation.\");\n"
-                    + "        String arrayLine = input.substring(arrayStart + 1, arrayEnd).trim();\n"
-                    + "        String targetText = input.substring(arrayEnd + 1).trim();\n"
-                    + "        if (targetText.isEmpty()) throw new IllegalArgumentException(\"Expected a target after the array.\");\n"
-                    + "        int target = Integer.parseInt(targetText.split(\"\\\\s+\")[0]);\n"
-                    + "        int[] nums = java.util.Arrays.stream(arrayLine.split(\",\"))\n"
-                    + "                .mapToInt(value -> Integer.parseInt(value.trim())).toArray();\n"
-                    + "        int[] result = new Solution().twoSum(nums, target);\n"
-                    + "        System.out.println(\"[\" + result[0] + \",\" + result[1] + \"]\");\n"
-                    + "    }\n"
-                    + "}";
-        }
-        if ("reverse-linked-list".equals(slug)) {
-            return "class Main {\n"
-                    + "    public static void main(String[] args) throws Exception {\n"
-                    + "        String input = new java.io.BufferedReader(new java.io.InputStreamReader(System.in)).readLine().trim();\n"
-                    + "        System.out.println(new Solution().reverseList(input));\n"
-                    + "    }\n"
-                    + "}";
-        }
-        return "";
+    String runnerCodeFor(String slug) {
+        return switch (slug) {
+            case "two-sum" -> """
+                    class Main {
+                        public static void main(String[] args) throws Exception {
+                            String input = new String(System.in.readAllBytes()).trim();
+                            int arrayStart = input.indexOf('[');
+                            int arrayEnd = input.indexOf(']', arrayStart);
+                            if (arrayStart < 0 || arrayEnd < 0) throw new IllegalArgumentException("Expected an array in bracket notation.");
+                            String arrayLine = input.substring(arrayStart + 1, arrayEnd).trim();
+                            String targetText = input.substring(arrayEnd + 1).trim();
+                            if (targetText.isEmpty()) throw new IllegalArgumentException("Expected a target after the array.");
+                            int target = Integer.parseInt(targetText.split("\\\\s+")[0]);
+                            int[] nums = java.util.Arrays.stream(arrayLine.split(","))
+                                    .mapToInt(value -> Integer.parseInt(value.trim())).toArray();
+                            int[] result = new Solution().twoSum(nums, target);
+                            System.out.println("[" + result[0] + "," + result[1] + "]");
+                        }
+                    }
+                    """;
+            case "reverse-linked-list" -> """
+                    class Main {
+                        public static void main(String[] args) throws Exception {
+                            String input = new java.io.BufferedReader(new java.io.InputStreamReader(System.in)).readLine().trim();
+                            System.out.println(new Solution().reverseList(input));
+                        }
+                    }
+                    """;
+            case "largest-fixed-size-window" -> """
+                    class Main {
+                        public static void main(String[] args) {
+                            java.util.Scanner scanner = new java.util.Scanner(System.in);
+                            int[] values = parseArray(scanner.nextLine());
+                            int k = Integer.parseInt(scanner.nextLine().trim());
+                            System.out.println(new Solution().largestWindowSum(values, k));
+                        }
+                        private static int[] parseArray(String line) {
+                            String values = line.replace("[", "").replace("]", "").trim();
+                            if (values.isEmpty()) return new int[0];
+                            return java.util.Arrays.stream(values.split(","))
+                                    .mapToInt(value -> Integer.parseInt(value.trim())).toArray();
+                        }
+                    }
+                    """;
+            case "merge-ordered-sequences" -> """
+                    class Main {
+                        public static void main(String[] args) {
+                            java.util.Scanner scanner = new java.util.Scanner(System.in);
+                            int[] first = parseArray(scanner.nextLine());
+                            int[] second = parseArray(scanner.nextLine());
+                            System.out.println(java.util.Arrays.toString(new Solution().mergeOrdered(first, second)).replace(" ", ""));
+                        }
+                        private static int[] parseArray(String line) {
+                            String values = line.replace("[", "").replace("]", "").trim();
+                            if (values.isEmpty()) return new int[0];
+                            return java.util.Arrays.stream(values.split(","))
+                                    .mapToInt(value -> Integer.parseInt(value.trim())).toArray();
+                        }
+                    }
+                    """;
+            case "circular-right-shift" -> """
+                    class Main {
+                        public static void main(String[] args) {
+                            java.util.Scanner scanner = new java.util.Scanner(System.in);
+                            int[] values = parseArray(scanner.nextLine());
+                            int k = Integer.parseInt(scanner.nextLine().trim());
+                            System.out.println(java.util.Arrays.toString(new Solution().shiftRight(values, k)).replace(" ", ""));
+                        }
+                        private static int[] parseArray(String line) {
+                            String values = line.replace("[", "").replace("]", "").trim();
+                            if (values.isEmpty()) return new int[0];
+                            return java.util.Arrays.stream(values.split(","))
+                                    .mapToInt(value -> Integer.parseInt(value.trim())).toArray();
+                        }
+                    }
+                    """;
+            case "first-unique-signal" -> """
+                    class Main {
+                        public static void main(String[] args) {
+                            String value = new java.util.Scanner(System.in).nextLine();
+                            System.out.println(new Solution().firstUniqueIndex(value));
+                        }
+                    }
+                    """;
+            case "longest-uphill-run" -> """
+                    class Main {
+                        public static void main(String[] args) {
+                            String line = new java.util.Scanner(System.in).nextLine();
+                            String rawValues = line.replace("[", "").replace("]", "").trim();
+                            int[] values = rawValues.isEmpty() ? new int[0] : java.util.Arrays.stream(rawValues.split(","))
+                                    .mapToInt(value -> Integer.parseInt(value.trim())).toArray();
+                            System.out.println(new Solution().longestUphillRun(values));
+                        }
+                    }
+                    """;
+            case "balanced-bracket-sequence" -> """
+                    class Main {
+                        public static void main(String[] args) {
+                            String value = new java.util.Scanner(System.in).nextLine();
+                            System.out.println(new Solution().isBalanced(value));
+                        }
+                    }
+                    """;
+            case "best-forward-gain" -> """
+                    class Main {
+                        public static void main(String[] args) {
+                            String line = new java.util.Scanner(System.in).nextLine();
+                            int[] values = java.util.Arrays.stream(line.replace("[", "").replace("]", "").split(","))
+                                    .mapToInt(value -> Integer.parseInt(value.trim())).toArray();
+                            System.out.println(new Solution().bestForwardGain(values));
+                        }
+                    }
+                    """;
+            case "count-exact-tokens" -> """
+                    class Main {
+                        public static void main(String[] args) {
+                            java.util.Scanner scanner = new java.util.Scanner(System.in);
+                            String text = scanner.nextLine();
+                            String token = scanner.nextLine();
+                            System.out.println(new Solution().countExactTokens(text, token));
+                        }
+                    }
+                    """;
+            case "grid-diagonal-gap" -> """
+                    class Main {
+                        public static void main(String[] args) {
+                            java.util.Scanner scanner = new java.util.Scanner(System.in);
+                            int n = Integer.parseInt(scanner.nextLine().trim());
+                            int[][] grid = new int[n][n];
+                            for (int row = 0; row < n; row++) {
+                                String line = scanner.nextLine();
+                                grid[row] = java.util.Arrays.stream(line.split(","))
+                                        .mapToInt(value -> Integer.parseInt(value.trim())).toArray();
+                            }
+                            System.out.println(new Solution().diagonalGap(grid));
+                        }
+                    }
+                    """;
+            case "collapse-neighbor-repeats" -> """
+                    class Main {
+                        public static void main(String[] args) {
+                            String line = new java.util.Scanner(System.in).nextLine();
+                            int[] values = java.util.Arrays.stream(line.replace("[", "").replace("]", "").split(","))
+                                    .mapToInt(value -> Integer.parseInt(value.trim())).toArray();
+                            System.out.println(java.util.Arrays.toString(new Solution().collapseNeighbors(values)).replace(" ", ""));
+                        }
+                    }
+                    """;
+            default -> "";
+        };
     }
     
     public SubmissionResultDto getSubmission(Long id, Long userId) {

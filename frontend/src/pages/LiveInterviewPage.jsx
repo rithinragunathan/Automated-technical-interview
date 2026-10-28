@@ -104,6 +104,18 @@ const LiveInterviewPage = () => {
   }, [id, navigate]);
 
   useEffect(() => {
+    const questions = interview?.questions || [];
+    if (
+      interview?.status === 'ACTIVE'
+      && questions.length > 0
+      && questions.every(question => question.completedAt)
+      && !isFinishing
+    ) {
+      handleFinish(false);
+    }
+  }, [handleFinish, interview, isFinishing]);
+
+  useEffect(() => {
     if (!timerReady || !timerActive) return undefined;
     const interval = setInterval(() => {
       setTimeLeft(seconds => Math.max(0, seconds - 1));
@@ -136,6 +148,14 @@ const LiveInterviewPage = () => {
       }]);
 
       const questions = interview?.questions || [];
+      setInterview(previous => ({
+        ...previous,
+        questions: previous.questions.map(question => (
+          question.id === currentQuestion.id
+            ? { ...question, completedAt: new Date().toISOString() }
+            : question
+        ))
+      }));
       const nextIndex = currentQuestionIndex + 1;
       setCurrentQuestionIndex(nextIndex);
       setCurrentQuestion(questions[nextIndex] || null);

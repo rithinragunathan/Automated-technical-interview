@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShieldAlert, Clock, Code, MessageSquare, Play, Loader2 } from 'lucide-react';
+import { ShieldAlert, Clock, Code, MessageSquare, ListChecks, Play, Loader2 } from 'lucide-react';
 import { getInterview, startInterview } from '../api/interviews';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
@@ -68,6 +68,10 @@ const InterviewInstructionsPage = () => {
               )}
               <span>Format: <strong>{(interview.interviewType || 'MOCK').replaceAll('_', ' ')}</strong></span>
             </div>
+            <div className="flex items-center text-gray-300 ml-0 sm:ml-4">
+              <ListChecks className="w-5 h-5 mr-2 text-brand-400" />
+              <span>Questions: <strong>{interview.questions?.length || 0}</strong></span>
+            </div>
           </div>
 
           {/* Rules */}
@@ -80,6 +84,15 @@ const InterviewInstructionsPage = () => {
               <li>Ensure you have a stable internet connection before starting.</li>
               <li>Do not refresh the page during the interview, or progress may be lost.</li>
               <li>The timer will start immediately once you click "Begin Interview".</li>
+              {interview.interviewType === 'CODING' && (
+                <li>Coding assessments include a coding exercise and eight Gemini-generated questions. Answer each question by voice or text.</li>
+              )}
+              {interview.interviewType === 'MIXED' && (
+                <li>Mixed interviews include a coding exercise and four Gemini-generated questions. Answer each question by voice or text.</li>
+              )}
+              {interview.interviewType === 'TECHNICAL_QA' && (
+                <li>Technical Q&A includes eight Gemini-generated questions. Answer each question by voice or text.</li>
+              )}
               <li>You must submit your code or answers before the timer runs out.</li>
               <li>Your camera and microphone are <strong>not</strong> required for this automated mock interview.</li>
               <li>Plagiarism checks will be performed on code submissions.</li>

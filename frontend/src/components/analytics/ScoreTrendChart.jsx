@@ -10,24 +10,24 @@ const ScoreTrendChart = ({ data }) => {
           data={data}
           margin={{ top: 5, right: 20, left: -20, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#30363d" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e4e8e2" vertical={false} />
           <XAxis 
             dataKey="date" 
             tickFormatter={(tick) => formatDate(tick, 'MMM d')}
-            stroke="#8b949e" 
-            tick={{ fill: '#8b949e', fontSize: 12 }}
+            stroke="#687169"
+            tick={{ fill: '#687169', fontSize: 12 }}
             tickLine={false}
-            axisLine={{ stroke: '#30363d' }}
+            axisLine={{ stroke: '#e4e8e2' }}
           />
           <YAxis 
             domain={[0, 100]} 
-            stroke="#8b949e" 
-            tick={{ fill: '#8b949e', fontSize: 12 }}
+            stroke="#687169"
+            tick={{ fill: '#687169', fontSize: 12 }}
             tickLine={false}
             axisLine={false}
           />
           <Tooltip 
-            contentStyle={{ backgroundColor: '#161b22', borderColor: '#30363d', color: '#e6edf3', borderRadius: '8px' }}
+            contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e4e8e2', color: '#242a25', borderRadius: '8px', boxShadow: '0 4px 12px rgb(34 44 37 / 10%)' }}
             labelFormatter={(label) => formatDate(label)}
           />
           <Legend wrapperStyle={{ paddingTop: '10px' }} />
@@ -35,16 +35,16 @@ const ScoreTrendChart = ({ data }) => {
             type="monotone" 
             name="Overall Score"
             dataKey="score" 
-            stroke="#4c6ef5" 
+            stroke="#52786e"
             strokeWidth={3}
-            activeDot={{ r: 6, fill: '#4c6ef5', stroke: '#0f1117', strokeWidth: 2 }}
-            dot={{ r: 4, fill: '#161b22', stroke: '#4c6ef5', strokeWidth: 2 }}
+            activeDot={{ r: 6, fill: '#52786e', stroke: '#ffffff', strokeWidth: 2 }}
+            dot={{ r: 4, fill: '#ffffff', stroke: '#52786e', strokeWidth: 2 }}
           />
           <Line 
             type="monotone" 
             name="Coding Score"
             dataKey="codingScore" 
-            stroke="#2ea043" 
+            stroke="#6b8f71"
             strokeWidth={2}
             dot={false}
           />

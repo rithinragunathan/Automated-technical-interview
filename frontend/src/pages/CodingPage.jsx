@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Play, Send, RefreshCw, ChevronLeft } from 'lucide-react';
 import CodeEditor from '../components/coding/CodeEditor';
 import ProblemPanel from '../components/coding/ProblemPanel';
@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 
 const CodingPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [problem, setProblem] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,6 +26,7 @@ const CodingPage = () => {
   const [status, setStatus] = useState(SUBMISSION_STATUS.IDLE);
   const [results, setResults] = useState(null);
   const [metrics, setMetrics] = useState(null);
+  const [executionSummary, setExecutionSummary] = useState(null);
 
   const interviewId = searchParams.get('interviewId');
   const getStarterCode = (data, lang) => {
@@ -63,6 +65,7 @@ const CodingPage = () => {
     setStatus(SUBMISSION_STATUS.SUBMITTING);
     setResults(null);
     setMetrics(null);
+    setExecutionSummary(null);
     
     try {
       const request = {
@@ -75,16 +78,35 @@ const CodingPage = () => {
       const response = isSubmit ? await createSubmission(request) : await runCode(request);
       
       const testCaseById = new Map((problem.publicTestCases || []).map(testCase => [testCase.id, testCase]));
-      setResults((response.testResults || []).map(result => ({
-        status: result.passed ? 'PASSED' : 'FAILED',
+      const testResults = Array.isArray(response.testResults) ? response.testResults : [];
+      const responseStatus = typeof response.status === 'string' ? response.status : 'UNKNOWN';
+      setResults(testResults.map(result => ({
+        status: result.passed ? 'PASSED' : result.errorMessage ? 'ERROR' : 'FAILED',
         input: testCaseById.get(result.testCaseId)?.input || 'Hidden test case',
         expectedOutput: testCaseById.get(result.testCaseId)?.expectedOutput || 'Hidden test case',
         actualOutput: result.actualOutput,
         errorMessage: result.errorMessage,
-        consoleOutput: result.actualOutput
+        consoleOutput: result.actualOutput || result.errorMessage || ''
       })));
       setMetrics({ timeMs: response.executionTimeMs, memoryKb: response.memoryUsedKb });
-      setStatus(SUBMISSION_STATUS.DONE);
+      setExecutionSummary({
+        status: responseStatus,
+        passedTests: Number.isFinite(response.passedTests)
+          ? response.passedTests
+          : testResults.filter(result => result.passed).length,
+        totalTests: Number.isFinite(response.totalTests) ? response.totalTests : testResults.length
+      });
+      setStatus(
+        ['COMPILATION_ERROR', 'RUNTIME_ERROR', 'TIME_LIMIT_EXCEEDED', 'MEMORY_LIMIT_EXCEEDED', 'SYSTEM_ERROR']
+          .includes(responseStatus)
+          ? SUBMISSION_STATUS.ERROR
+          : SUBMISSION_STATUS.DONE
+      );
+
+      if (isSubmit && interviewId && responseStatus === 'ACCEPTED') {
+        toast.success('Solution accepted. Returning to your interview.');
+        navigate(`/interviews/${interviewId}/live`);
+      }
       
     } catch (err) {
       console.error(err);
@@ -122,12 +144,17 @@ const CodingPage = () => {
           <span className="font-semibold text-white tracking-tight">{problem?.title}</span>
         </div>
         <div className="flex items-center space-x-4">
-          <ExecutionStatus status={status} />
+          <ExecutionStatus
+            status={status}
+            message={executionSummary
+              ? `${executionSummary.status.replaceAll('_', ' ')} · ${executionSummary.passedTests}/${executionSummary.totalTests} tests passed`
+              : undefined}
+          />
         </div>
       </header>
 
       {/* Main Layout */}
-      <main className="flex-grow flex overflow-hidden">
+      <main className="flex-grow flex min-h-0 overflow-hidden">
         
         {/* Left Panel: Problem Description */}
         <div className="w-[40%] flex-shrink-0 relative">
@@ -136,7 +163,7 @@ const CodingPage = () => {
         </div>
         
         {/* Right Panel: Editor & Output */}
-        <div className="w-[60%] flex flex-col min-w-[300px]">
+        <div className="w-[60%] flex flex-col min-w-[300px] min-h-0">
           {/* Editor Toolbar */}
           <div className="h-12 bg-[#161b22] border-b border-[#30363d] flex items-center justify-between px-4 shrink-0">
             <div className="flex items-center">
@@ -176,7 +203,7 @@ const CodingPage = () => {
           </div>
 
           {/* Editor Container */}
-          <div className="flex-grow relative border-b border-[#30363d]">
+          <div className="flex-grow min-h-0 relative border-b border-[#30363d]">
             <CodeEditor 
               value={code} 
               onChange={setCode} 
@@ -187,7 +214,13 @@ const CodingPage = () => {
 
           {/* Output Panel (fixed height or resizable, sticking to fixed for now) */}
           <div className="h-[250px] flex-shrink-0">
-              <TestCasePanel results={results} status={status} metrics={metrics} testCases={problem?.publicTestCases} />
+              <TestCasePanel
+                results={results}
+                status={status}
+                metrics={metrics}
+                testCases={problem?.publicTestCases}
+                executionSummary={executionSummary}
+              />
           </div>
         </div>
       </main>

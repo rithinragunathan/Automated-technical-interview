@@ -6,7 +6,6 @@ import com.mockinterview.evaluation.entity.TechnicalAnswer;
 import com.mockinterview.evaluation.provider.LLMProvider;
 import com.mockinterview.evaluation.repository.TechnicalAnswerRepository;
 import com.mockinterview.common.exception.ResourceNotFoundException;
-import com.mockinterview.common.exception.ApiException;
 import com.mockinterview.interview.entity.Interview;
 import com.mockinterview.interview.repository.InterviewRepository;
 import com.mockinterview.recommendation.dto.RecommendationDto;
@@ -32,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.OptionalDouble;
@@ -82,11 +82,12 @@ public class ReportService {
     }
 
     public InterviewReportDto generateReport(Long interviewId, Long userId) {
-        Interview interview = interviewRepository.findById(interviewId)
+        Interview interview = interviewRepository.findByIdForReport(interviewId)
                 .filter(candidate -> candidate.getUser().getId().equals(userId))
                 .orElseThrow(() -> new ResourceNotFoundException("Interview not found"));
 
-        List<Submission> submissions = submissionRepository.findByInterviewId(interviewId);
+        List<Submission> submissions = latestSubmittedSubmissionsByProblem(
+                submissionRepository.findByInterviewId(interviewId));
         
         // Compute coding scores
         double totalCodingScore = 0;
@@ -149,8 +150,8 @@ public class ReportService {
                                 .toList()
                 ));
             } catch (IllegalStateException ex) {
-                log.warn("Gemini could not generate feedback for interview {}", interviewId, ex);
-                throw new ApiException("Gemini is temporarily unable to generate report feedback. Please try again shortly.", 503);
+                log.warn("Gemini could not generate feedback for interview {}; using recorded results", interviewId, ex);
+                feedback = createFallbackFeedback(interview, score, submissions, answers, totalPassed, totalTests);
             }
 
             report = new FeedbackReport();
@@ -168,15 +169,13 @@ public class ReportService {
                     report.getWeaknessesList());
         }
 
+        recommendationEngine.generateRecommendations(
+                interview.getUser().getId(),
+                interviewId,
+                lastBreakdown,
+                avgKnowledgeScore);
         List<RecommendationDto> recDtos = new ArrayList<>();
         List<Recommendation> recommendations = recommendationRepository.findByInterviewId(interviewId);
-        if (recommendations.isEmpty() && lastBreakdown != null) {
-            recommendations = recommendationEngine.generateRecommendations(
-                    interview.getUser().getId(),
-                    interviewId,
-                    lastBreakdown,
-                    avgKnowledgeScore != null ? avgKnowledgeScore : 0);
-        }
         if (!recommendations.isEmpty()) {
             List<Recommendation> recs = recommendations;
             recDtos = recs.stream().map(r -> new RecommendationDto(
@@ -205,6 +204,20 @@ public class ReportService {
         );
     }
 
+    static List<Submission> latestSubmittedSubmissionsByProblem(List<Submission> submissions) {
+        return submissions.stream()
+                .filter(submission -> submission.getExecutionType() == Submission.ExecutionType.SUBMIT)
+                .collect(Collectors.toMap(
+                        submission -> submission.getProblem().getId(),
+                        submission -> submission,
+                        (first, second) -> second.getCreatedAt().isAfter(first.getCreatedAt()) ? second : first
+                ))
+                .values()
+                .stream()
+                .sorted(Comparator.comparing(Submission::getCreatedAt))
+                .toList();
+    }
+
     private String formatAnswerForFeedback(TechnicalAnswer answer) {
         String question = answer.getInterviewQuestion().isAiGenerated()
                 ? answer.getInterviewQuestion().getAiQuestionText()
@@ -215,5 +228,51 @@ public class ReportService {
                                 : "Interview question";
         return "Question: %s | Candidate answer: %s | Evaluation score: %.1f"
                 .formatted(question, answer.getAnswerText(), answer.getOverallScore() != null ? answer.getOverallScore() : 0.0);
+    }
+
+    private InterviewFeedback createFallbackFeedback(Interview interview,
+                                                     Score score,
+                                                     List<Submission> submissions,
+                                                     List<TechnicalAnswer> answers,
+                                                     int totalPassed,
+                                                     int totalTests) {
+        List<String> strengths = new ArrayList<>();
+        List<String> weaknesses = new ArrayList<>();
+
+        if (!submissions.isEmpty() && totalTests > 0) {
+            if (totalPassed == totalTests) {
+                strengths.add("Your submitted code passed all %d recorded test cases.".formatted(totalTests));
+            } else if (totalPassed > 0) {
+                strengths.add("Your code passed %d of %d recorded test cases.".formatted(totalPassed, totalTests));
+            }
+            if (totalPassed < totalTests) {
+                weaknesses.add("Review the failing test cases and check boundary conditions before submitting again.");
+            }
+        }
+
+        if (!answers.isEmpty()) {
+            if (score.getKnowledgeScore() >= 70) {
+                strengths.add("Your technical answers showed a solid understanding of the interview topics.");
+            } else {
+                weaknesses.add("Practice explaining technical concepts with a concrete example and a clear sequence of steps.");
+            }
+        }
+
+        if (submissions.isEmpty() && answers.isEmpty()) {
+            weaknesses.add("No code submission or evaluated technical answer was recorded, so this report is a starting point rather than a full assessment.");
+        }
+
+        if (strengths.isEmpty() && !submissions.isEmpty()) {
+            strengths.add("You completed a coding interview and now have a baseline to build on.");
+        }
+        if (weaknesses.isEmpty()) {
+            weaknesses.add("Try a more challenging problem to explore optimization and additional edge cases.");
+        }
+
+        String narrative = "This report summarizes your %s %s interview on %s using the results recorded during the session."
+                .formatted(interview.getDifficulty().name().toLowerCase(),
+                        interview.getInterviewType().name().replace('_', ' ').toLowerCase(),
+                        interview.getTopic() == null ? "your selected topic" : interview.getTopic().replace('_', ' '));
+        return new InterviewFeedback(narrative, strengths, weaknesses);
     }
 }
